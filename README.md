@@ -35,7 +35,7 @@ You can also just download 'index.html' and run it locally. Doesnt need to insta
 
 ## How to use ts
 
-1. Back up any RC-505 mk2 memory to a USB compatible device (compoter👁️👁️) (Menu button x3 -> USB -> Right, then Storage Mode ON).
+1. Back up any RC-505 mk2 memory to a USB compatible device (compoter👁️👁️) (Menu button x2 -> USB -> Right, then Storage ON).
 2. Find a 'MEMORYXXX.RC0', XXX being 3 digits, from ROLAND -> DATA folder.
 3. Drag and drop into the box
 4. bingo bango bongo
