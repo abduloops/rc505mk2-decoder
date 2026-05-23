@@ -33,7 +33,7 @@ If you find something wrong, maybe open an issue im no like genius so I might no
   
 ## Credits
 
-Reverse engineering done by yours truly, [@abduloops](https://github.com/abduloops). Everything else done by [Claude](https://claude.ai) 😅😅 (i cant code for shihhhh my bad chat)
+Documented Testing done by yours truly, [@abduloops](https://github.com/abduloops). Everything else done by [Claude](https://claude.ai) 😅😅 (i cant code for shihhhh my bad chat)
 
 
 ---
