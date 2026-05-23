@@ -3209,14 +3209,13 @@ function loadFile(file) {
       let entries = loadedPairs.get(key);
       const isNewMemory = !entries;
       if (!entries) {
-        // Enforce soft cap: if at limit, drop the oldest entry (first key)
+        // Enforce soft cap: if at limit, drop the oldest entry (first key).
+        // Accumulate the drop count so loadFiles can show one summary toast
+        // at the end (instead of N toasts overwriting each other rapidly).
         if (loadedPairs.size >= MEMORY_LIMIT) {
           const oldestKey = loadedPairs.keys().next().value;
           loadedPairs.delete(oldestKey);
-          showToast(
-            `Reached the ${MEMORY_LIMIT}-memory limit — dropping the oldest one to make room.`,
-            { duration: 5000 }
-          );
+          batchDroppedCount++;
         }
         entries = [];
         loadedPairs.set(key, entries);
@@ -3243,17 +3242,33 @@ function loadFile(file) {
   reader.readAsText(file);
 }
 
+// Track how many memories were dropped during the current load batch so we
+// can summarize at the end instead of toasting once per drop.
+let batchDroppedCount = 0;
+
 // Load multiple files (for drag-drop of multiple files at once).
 function loadFiles(files) {
-  // Hard cap on a single drop: warn if they're trying to drop way too many.
   const arr = Array.from(files);
+  let overLimitWarning = null;
   if (arr.length > MEMORY_LIMIT * 2) {
-    showToast(
-      `That's a lot of files (${arr.length}) — only loading the first ${MEMORY_LIMIT * 2}.`,
-      { duration: 5000 }
-    );
+    overLimitWarning = `That's a lot of files (${arr.length}) — only loading the first ${MEMORY_LIMIT * 2}.`;
   }
+  batchDroppedCount = 0;
   for (const f of arr.slice(0, MEMORY_LIMIT * 2)) loadFile(f);
+  // FileReader is async — defer the summary toast slightly so all loads
+  // have settled. Show whichever message applies.
+  setTimeout(() => {
+    if (overLimitWarning) {
+      showToast(overLimitWarning, { duration: 7000 });
+    } else if (batchDroppedCount > 0) {
+      const word = batchDroppedCount === 1 ? 'memory' : 'memories';
+      showToast(
+        `Dropped ${batchDroppedCount} older ${word} to stay under the ${MEMORY_LIMIT}-memory limit.`,
+        { duration: 7000 }
+      );
+    }
+    batchDroppedCount = 0;
+  }, 250);
 }
 
 const drop = document.getElementById('drop');
