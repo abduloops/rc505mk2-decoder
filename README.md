@@ -5,11 +5,19 @@ Drag-and-drop viewer for rc-505 mk2 memory files (.RC0). Its basically .xml so i
 
 <img width="2542" height="1040" alt="welcome to site peter" src="https://github.com/user-attachments/assets/f7debae7-f97d-4967-89af-91286b720b73" />
 
+*welcome to site pter*
+
 <img width="1638" height="1192" alt="ooooo trax" src="https://github.com/user-attachments/assets/5ca879b7-5e06-44b6-91e8-73dcff988890" />
+
+*traxs wo omg*
 
 <img width="1691" height="1148" alt="WGAT SSTEPSICER" src="https://github.com/user-attachments/assets/5b6402a5-90fe-4100-81f2-711a8464be98" />
 
+*wgat graph holy moly*
+
 <img width="1678" height="962" alt="oooo drop down menu" src="https://github.com/user-attachments/assets/caa5ed32-fbb8-4069-8219-efef7741ed71" />
+
+*drop down what the fart*
 
 <img width="1719" height="942" alt="xml for nerds XD" src="https://github.com/user-attachments/assets/6acba616-0b18-49ba-b18a-1a5c8ad943e0" />
 
