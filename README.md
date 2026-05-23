@@ -22,6 +22,7 @@ This is still work-in-progress little project. A lot of the values and stuff hav
 * Rhythm section toggles
 * Some REC/PLAY parameters
 * Some track bits
+* evil ahh ctl and assigns. idk if ill tackle those ngl
 
 If you find something wrong, maybe open an issue im no like genius so I might not do anything about it lol or ill just fix it later. ionknow how ts work ngl.
 
@@ -38,10 +39,15 @@ Also blah blah blah i aint responsible for stuff that happen to u gang. nothing 
 * **Only tested with an RC-505 mk2.** No RC-600 and no mk1.
 * Currently, only Memory files work, but I plan on getting SYSTEM1 and SYSTEM2.RC0 to work. idk about RHYTHM.RC0
 * Runs in browser type shihhhhh
+
+## future plans
+* ts lowk some yap but basically imma try getting a save like comparing thing on here. also with some testing i found out sometimes when you save a change it saves to MemoryXXXB instead of A idk why or how ts works but thats my reasoning for that.
+* also maybe plan on getting SYSTEM1.RC0 and SYSTEM2.RC0 to work in this site cuz right now its only memory files so yuh.
+* other future plans are like try finding more bugs (i think some fx display incorrectly)
   
 ## Credits
 
-Documented Testing done by yours truly, [@abduloops](https://github.com/abduloops). Everything else done by [Claude](https://claude.ai) 😅😅 (i cant code for shihhhh my bad chat)
+Documented Testing done by yours truly, [@abduloops](https://github.com/abduloops) [youtube](https://youtube.com/@AbduLoops). Everything else done by [Claude](https://claude.ai) 😅😅 (i cant code for shihhhh my bad chat)
 
 
 ---
