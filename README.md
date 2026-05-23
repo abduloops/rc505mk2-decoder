@@ -25,7 +25,7 @@ Drag-and-drop viewer for rc-505 mk2 memory files (.RC0). Its basically .xml so i
 
 ## Try here chat w chat😅😅😅: [Super sigma link](https://abduloops.github.io/rc505mk2-decoder/)
 
-You can also just download 'index.html' and run it locally. Doesnt need to install any dependencies or nothing
+You can also just download 'index.html' above or in [releases](../../releases) and run it locally. Doesnt need to install any dependencies or nothing
 
 ## Features
 - Decodes track settings (reverse, 1shot, etc..)
@@ -64,15 +64,16 @@ Also blah blah blah i aint responsible for stuff that happen with ur loop gang. 
 * **Only tested with an RC-505 mk2.** No RC-600 and no mk1.
 * Currently, only Memory files work, but I plan on getting SYSTEM1 and SYSTEM2.RC0 to work. idk about RHYTHM.RC0
 * Runs in browser type shihhhhh
+* I havent tested on mobile (idk why u would upload ur backup to phone but u do u gang it might be hard to do stuff though)
 
 ## Future Plans
-* ts lowk some yap but basically imma try getting a save like comparing thing on here. also with some testing i found out sometimes when you save a change it saves to MemoryXXXB instead of A idk why or how ts works but thats my reasoning for that.
+* ~~ts lowk some yap but basically imma try getting a save like comparing thing on here. also with some testing i found out sometimes when you save a change it saves to MemoryXXXB instead of A idk why or how ts works but thats my reasoning for that.~~ done ts kinda basically a bit
 * also maybe plan on getting SYSTEM1.RC0 and SYSTEM2.RC0 to work in this site cuz right now its only memory files so yuh.
-* other future plans are like try finding more bugs (i think some fx display incorrectly)
+* other future plans are like try finding more bugs ~~(i think some fx display incorrectly)~~ (fx bug should be gone now nyeheheh)
   
 ## Credits
 
-Documented Testing done by yours truly, [@abduloops](https://github.com/abduloops) [youtube](https://youtube.com/@AbduLoops). Everything else done by [Claude](https://claude.ai) 😅😅 (i cant code for shihhhh my bad chat)
+Documented Testing done by yours truly, [@abduloops](https://github.com/abduloops) ([youtube](https://youtube.com/@AbduLoops), [ig](https://instagram.com/abdu_loops)). Everything else done by [Claude](https://claude.ai) 😅😅 (i cant code for shihhhh my bad chat)
 
 
 ---
