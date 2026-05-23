@@ -21,8 +21,9 @@ Drag-and-drop viewer for rc-505 mk2 memory files (.RC0). Its basically .xml so i
 
 <img width="1719" height="942" alt="xml for nerds XD" src="https://github.com/user-attachments/assets/6acba616-0b18-49ba-b18a-1a5c8ad943e0" />
 
+## Usage 
 
-**[Try here](https://abduloops.github.io/rc505mk2-decoder/)**
+## Try here chat w chat😅😅😅: [Super sigma link](https://abduloops.github.io/rc505mk2-decoder/)
 
 You can also just download 'index.html' and run it locally. Doesnt need to install any dependencies or nothing
 
