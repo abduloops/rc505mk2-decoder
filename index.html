@@ -1,0 +1,2791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RC-505mk2 Memory Viewer</title>
+<style>
+  /* ---------------------------------------------------------------- */
+  /*  Aesthetic: industrial audio gear control surface.               */
+  /*  Dark background, mono labels, BOSS red & amber accents.         */
+  /* ---------------------------------------------------------------- */
+
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Mono:wght@400;700&family=Archivo:wght@500;700;900&display=swap');
+
+  :root {
+    --bg: #0b0c0d;
+    --bg-panel: #14161a;
+    --bg-panel-2: #1c1f25;
+    --bg-card: #1a1d23;
+    --border: #2a2f38;
+    --border-strong: #3a4150;
+    --text: #d4d7dc;
+    --text-dim: #7a8090;
+    --text-mute: #4d5260;
+    --red: #d8281a;       /* BOSS red */
+    --red-glow: #ff4332;
+    --amber: #e8a823;
+    --green: #4caf50;
+    --cyan: #4fc3d6;
+    --uncertain: #6b5b29;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* Scanline overlay for that LCD-screen feel */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,0.012) 0px,
+      rgba(255,255,255,0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none; z-index: 1000;
+  }
+
+  /* ===== Header / device chrome ===== */
+  header {
+    background: linear-gradient(180deg, #16181c 0%, #0e0f12 100%);
+    border-bottom: 2px solid var(--red);
+    padding: 24px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative;
+  }
+  header::after {
+    content: '';
+    position: absolute; left: 0; right: 0; bottom: -2px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--red) 0%, var(--red) 30%, transparent 30%, transparent 100%);
+  }
+
+  .brand {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+  .brand .top {
+    font-size: 11px; color: var(--text-dim); letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+  .brand h1 {
+    margin: 4px 0 0;
+    font-size: 28px;
+    color: var(--text);
+    font-style: italic;
+  }
+  .brand h1 .accent { color: var(--red); }
+  .brand .sub {
+    font-size: 10px; color: var(--text-mute); letter-spacing: 0.25em;
+    text-transform: uppercase; margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 500;
+  }
+
+  .status-light {
+    display: flex; align-items: center; gap: 18px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--text-mute);
+  }
+  .led {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--text-mute);
+    margin-right: 6px;
+    box-shadow: 0 0 0 1px #000 inset;
+  }
+  .led.on { background: var(--red); box-shadow: 0 0 8px var(--red-glow), 0 0 0 1px #000 inset; }
+
+  /* ===== Drop zone ===== */
+  main { padding: 40px 32px 80px; max-width: 1400px; margin: 0 auto; }
+
+  #drop {
+    border: 2px dashed var(--border-strong);
+    border-radius: 4px;
+    padding: 60px 40px;
+    text-align: center;
+    background:
+      repeating-linear-gradient(45deg, transparent 0 12px, rgba(216,40,26,0.025) 12px 24px),
+      var(--bg-panel);
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
+  }
+  #drop.dragover {
+    border-color: var(--red); background-color: rgba(216,40,26,0.08);
+  }
+  #drop h2 {
+    font-family: 'Archivo', sans-serif; font-weight: 900;
+    font-size: 22px; margin: 0 0 8px; color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  #drop p { margin: 4px 0; color: var(--text-dim); font-size: 12px; }
+  #drop .hint { color: var(--text-mute); font-size: 11px; margin-top: 16px; }
+  #drop input[type=file] { display: none; }
+  #drop button {
+    margin-top: 18px;
+    background: var(--red); color: #fff;
+    border: none; padding: 10px 24px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    cursor: pointer; border-radius: 2px;
+    transition: background 0.1s;
+  }
+  #drop button:hover { background: var(--red-glow); }
+
+  /* ===== LCD-style memory header ===== */
+  .lcd {
+    background: #2a2519;
+    border: 2px solid #0a0a0a;
+    border-radius: 3px;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.5);
+    padding: 18px 24px;
+    margin-bottom: 28px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 24px;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .lcd .memno {
+    font-family: 'Archivo', sans-serif; font-weight: 900;
+    font-size: 64px; line-height: 1; color: var(--amber);
+    text-shadow: 0 0 8px rgba(232,168,35,0.5);
+    font-variant-numeric: tabular-nums;
+  }
+  .lcd .meminfo .name {
+    color: var(--amber); font-size: 18px; font-weight: 700;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 6px rgba(232,168,35,0.4);
+  }
+  .lcd .meminfo .meta {
+    color: rgba(232,168,35,0.55); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.2em; margin-top: 6px;
+  }
+  .lcd .tempo {
+    text-align: right;
+    color: var(--amber);
+    text-shadow: 0 0 6px rgba(232,168,35,0.4);
+  }
+  .lcd .tempo .val {
+    font-family: 'Archivo', sans-serif; font-weight: 900;
+    font-size: 36px; line-height: 1;
+  }
+  .lcd .tempo .label {
+    font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: rgba(232,168,35,0.55); margin-top: 4px;
+  }
+
+  /* ===== Tab nav ===== */
+  .tabs {
+    display: flex; gap: 0; margin-bottom: 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    background: transparent; color: var(--text-dim);
+    border: 1px solid transparent; border-bottom: none;
+    padding: 10px 18px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 500;
+    font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
+    cursor: pointer;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    transition: color 0.1s, background 0.1s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--text); background: var(--bg-panel);
+    border-color: var(--border); border-bottom-color: var(--bg-panel);
+  }
+
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-top: none;
+    padding: 28px 32px;
+    min-height: 400px;
+  }
+
+  /* ===== Track grid ===== */
+  .tracks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+  }
+  /* For pages where we want exactly 5 columns at wide widths
+     (5 tracks side by side) — fall back to auto-fit on narrow */
+  .tracks-grid-5 {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+  }
+  @media (max-width: 1280px) {
+    .tracks-grid-5 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  }
+  .track-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--text-mute);
+    padding: 16px 18px;
+    min-width: 0; /* allow shrinking inside grid */
+  }
+  .track-card.has-phrase { border-left-color: var(--red); }
+  .track-card h3 {
+    margin: 0 0 12px;
+    font-family: 'Archivo', sans-serif; font-weight: 900;
+    font-size: 16px; letter-spacing: 0.05em;
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 8px;
+  }
+  .track-card h3 .badge {
+    font-family: 'JetBrains Mono', monospace; font-weight: 500;
+    font-size: 9px; padding: 2px 8px;
+    background: var(--bg-panel-2); color: var(--text-dim);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  /* ===== Param rows ===== */
+  .params {
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    gap: 4px 12px;
+    font-size: 12px;
+  }
+  .params .k {
+    color: var(--text-mute);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: 11px;
+    border-bottom: 1px dotted var(--border);
+    padding-bottom: 2px; padding-top: 2px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .params .v {
+    color: var(--text);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    border-bottom: 1px dotted var(--border);
+    padding-bottom: 2px; padding-top: 2px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+  }
+  /* Long values (bitmasks, multi-word labels) get more aggressive breaking. */
+  .params .v.long {
+    word-break: break-word;
+  }
+  .params .v.uncertain {
+    color: var(--uncertain);
+    font-style: italic;
+  }
+  .params .v.enum { color: var(--cyan); }
+  .params .v.on { color: var(--red); font-weight: 700; }
+  .params .v.off { color: var(--text-mute); }
+  .params .v.raw {
+    color: var(--text-mute); font-size: 10px;
+    font-style: italic;
+  }
+  /* Inline marker for "unknown bit unexpectedly set" in bitmask values.
+     Dimmed, with a help-style hover cursor and a dotted underline to hint
+     that mousing over it gives more info. */
+  .bit-unknown {
+    color: var(--uncertain, #e8a823);
+    font-style: italic;
+    font-size: 0.9em;
+    cursor: help;
+    border-bottom: 1px dotted currentColor;
+  }
+
+  /* ===== FX banks grid ===== */
+  .fx-section h3 {
+    font-family: 'Archivo', sans-serif; font-weight: 900;
+    font-size: 18px;
+    color: var(--text);
+    margin: 28px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--red);
+    letter-spacing: 0.02em;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .fx-section h3:first-child { margin-top: 0; }
+  .fx-section h3 .num {
+    font-size: 11px; color: var(--text-mute);
+    letter-spacing: 0.2em; font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+
+  .fx-banks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+  }
+
+  /* ===== FX bank tab nav ===== */
+  .bank-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+    align-items: center;
+  }
+  .bank-tabs .label {
+    font-size: 10px; color: var(--text-mute);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    margin-right: 6px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 500;
+  }
+  .bank-btn {
+    background: var(--bg-panel-2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    width: 44px; height: 36px;
+    font-family: 'Archivo', sans-serif; font-weight: 900;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.1s;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .bank-btn:hover { color: var(--text); border-color: var(--border-strong); }
+  .bank-btn.active {
+    background: var(--red); color: #fff; border-color: var(--red);
+    box-shadow: 0 0 12px rgba(216,40,26,0.4);
+  }
+  .bank-btn .dot {
+    position: absolute; top: 4px; right: 4px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-mute);
+  }
+  .bank-btn.bank-on .dot { background: var(--amber); box-shadow: 0 0 4px var(--amber); }
+  .bank-btn.active .dot { display: none; }
+
+  .bank-meta {
+    margin-left: auto;
+    font-size: 10px; color: var(--text-dim);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .bank-meta .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    background: var(--bg-panel-2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    margin-left: 6px;
+    color: var(--text);
+  }
+  .bank-meta .pill.on { color: var(--red); border-color: var(--red); }
+
+  /* 4 FX slots side-by-side as columns */
+  .fx-columns {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+  @media (max-width: 1100px) {
+    .fx-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 600px) {
+    .fx-columns { grid-template-columns: 1fr; }
+  }
+  .fx-slots { display: grid; gap: 10px; }
+  .fx-slot {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--text-mute);
+    padding: 14px 14px 12px;
+    min-width: 0;
+    display: flex; flex-direction: column;
+  }
+  .fx-slot.on {
+    border-top-color: var(--red);
+    background: linear-gradient(180deg, rgba(216,40,26,0.06) 0%, var(--bg-card) 60%);
+  }
+  .fx-slot-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .fx-slot-head .slot-id {
+    font-family: 'Archivo', sans-serif; font-weight: 900;
+    font-size: 18px; color: var(--amber);
+    line-height: 1;
+  }
+  .fx-slot-head .state {
+    font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--text-mute);
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+  .fx-slot.on .state { color: var(--red); border-color: var(--red); }
+
+  /* FX type selector — looks like a button until clicked */
+  .fx-type-select {
+    background: var(--bg-panel-2);
+    color: var(--cyan);
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    width: 100%;
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+                      linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+    background-position: calc(100% - 14px) calc(50% - 2px),
+                         calc(100% - 9px) calc(50% - 2px);
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 28px;
+    transition: border-color 0.1s, color 0.1s;
+  }
+  .fx-slot.on .fx-type-select { color: var(--red); border-color: var(--red); }
+  .fx-type-select:hover { border-color: var(--border-strong); }
+  .fx-type-select:focus { outline: none; border-color: var(--amber); }
+  .fx-type-select option {
+    background: var(--bg-panel); color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .fx-slot-meta {
+    font-size: 10px; color: var(--text-mute);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex; justify-content: space-between;
+    padding: 0 2px;
+  }
+  .fx-slot-meta .v { color: var(--cyan); }
+  .fx-slot .params { font-size: 11px; }
+  .fx-slot .params .k { font-size: 10px; }
+
+  /* When a user picks a non-active type, show a subtle "previewing" notice */
+  .fx-preview-notice {
+    font-size: 9px;
+    color: var(--amber);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 4px 0;
+    margin-bottom: 8px;
+    background: rgba(232,168,35,0.08);
+    border: 1px dashed rgba(232,168,35,0.3);
+  }
+
+  /* ===== Sequencer block ===== */
+  .seq-block {
+    margin-top: 12px;
+    padding: 10px 10px 8px;
+    background: #0e1014;
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--cyan);
+  }
+  .seq-block.off { opacity: 0.45; border-top-color: var(--text-mute); }
+
+  .seq-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+    font-size: 10px; color: var(--text-mute);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace; font-weight: 500;
+  }
+  .seq-head .title { color: var(--cyan); font-weight: 700; }
+  .seq-block.off .seq-head .title { color: var(--text-mute); }
+  .seq-head .state-pill {
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+  .seq-head .state-pill.on {
+    color: var(--cyan); border-color: var(--cyan);
+  }
+
+  .seq-meta {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px 12px;
+    font-size: 10px;
+    margin-bottom: 10px;
+  }
+  .seq-meta .row {
+    display: flex; justify-content: space-between;
+    border-bottom: 1px dotted var(--border);
+    padding: 1px 0;
+  }
+  .seq-meta .k {
+    color: var(--text-mute);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .seq-meta .v { color: var(--text); }
+  .seq-meta .v.uncert { color: var(--uncertain); font-style: italic; }
+
+  /* Step grid — bars rising from a baseline */
+  .seq-steps {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    gap: 2px;
+    height: 56px;
+    align-items: end;
+    background:
+      linear-gradient(to top, transparent 0%, transparent calc(50% - 1px),
+        rgba(255,255,255,0.04) calc(50% - 1px), rgba(255,255,255,0.04) 50%,
+        transparent 50%);
+    padding: 2px;
+    border: 1px solid #1a1d23;
+  }
+  .seq-step {
+    background: linear-gradient(180deg, var(--cyan) 0%, #2a8fa3 100%);
+    min-height: 1px;
+    position: relative;
+    transition: filter 0.1s;
+    border-radius: 1px 1px 0 0;
+  }
+  .seq-step.zero {
+    background: var(--text-mute);
+    opacity: 0.3;
+    height: 2px !important;
+  }
+  .seq-step.beyond {
+    /* steps past the "MAX" cutoff */
+    background: var(--text-mute);
+    opacity: 0.18;
+  }
+  .seq-step:hover {
+    filter: brightness(1.4);
+    /* lift the hovered bar above its siblings so the tooltip renders in front */
+    z-index: 20;
+  }
+  .seq-step .tip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 9px;
+    padding: 2px 5px;
+    border: 1px solid var(--cyan);
+    border-radius: 2px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+    z-index: 10;
+  }
+  .seq-step:hover .tip { opacity: 1; }
+
+  /* Readout grid that appears under each step-bar chart. Lists each of the
+     16 step values in a compact 8-column × 2-row layout, with the step
+     number (01-16) on the left and the value on the right of each cell.
+     More legible than per-bar labels because each cell gets 2× the
+     horizontal space of a single bar column. */
+  .seq-numbers {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px 8px;
+    margin-top: 8px;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .seq-numbers .cell {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px dotted var(--border);
+    padding-bottom: 2px;
+    overflow: hidden;
+  }
+  .seq-numbers .cell .n {
+    color: var(--text-mute);
+    font-size: 8px;
+    letter-spacing: 0.05em;
+  }
+  .seq-numbers .cell .v {
+    color: var(--text);
+    font-weight: 600;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .seq-numbers.notes .cell .v {
+    /* OSC BOT note variant */
+    color: var(--cyan);
+  }
+  .seq-numbers .cell.beyond {
+    /* steps past Step Max */
+    opacity: 0.3;
+  }
+  .seq-numbers .cell.beyond .v {
+    color: var(--text-mute);
+    font-weight: 400;
+  }
+
+  /* ===== Assigns & raw view ===== */
+  .raw-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer; user-select: none;
+    color: var(--text-dim); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.15em;
+    margin-bottom: 12px;
+  }
+  .raw-toggle input { accent-color: var(--red); }
+
+  .assigns-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .assign-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    padding: 12px 14px; font-size: 11px;
+  }
+  .assign-card.disabled { opacity: 0.45; }
+  .assign-card h4 {
+    margin: 0 0 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.15em;
+    color: var(--text-dim);
+    display: flex; justify-content: space-between;
+  }
+  .assign-card h4 .state.on { color: var(--red); font-weight: 700; }
+
+  /* ===== Footer ===== */
+  footer {
+    margin-top: 60px; padding: 24px 32px;
+    border-top: 1px solid var(--border);
+    color: var(--text-mute); font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    text-align: center;
+  }
+  footer .disclaimer {
+    color: var(--uncertain); margin-top: 4px;
+    text-transform: none; letter-spacing: 0;
+    font-style: italic;
+  }
+
+  .empty {
+    color: var(--text-mute); text-align: center; padding: 40px;
+    font-style: italic;
+  }
+
+  /* small util */
+  .legend {
+    display: flex; gap: 18px; margin: -8px 0 16px;
+    font-size: 10px; color: var(--text-mute);
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .legend span::before {
+    content: '■'; margin-right: 6px;
+  }
+  .legend .confident::before { color: var(--text); }
+  .legend .uncert::before { color: var(--uncertain); }
+  .legend .raw::before { color: var(--text-mute); }
+
+  /* Mark uncertain key with subtle indicator */
+  .params .k.uncertain::after {
+    content: '?'; color: var(--uncertain); margin-left: 4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="top">BOSS Loop Station</div>
+    <h1>RC-505<span class="accent">mk2</span> Memory Viewer</h1>
+    <div class="sub">.RC0 Parser · Decoded Inline</div>
+  </div>
+  <div class="status-light">
+    <div><span class="led" id="led-loaded"></span>File Loaded</div>
+    <div><span class="led" id="led-ready"></span>Parser Ready</div>
+  </div>
+</header>
+
+<main>
+  <div id="drop">
+    <h2>Drop a MEMORY###.RC0 file here</h2>
+    <p>or click to browse</p>
+    <p class="hint">Files are parsed locally in your browser. Nothing is uploaded.</p>
+    <button type="button" id="browse-btn">Browse…</button>
+    <input type="file" id="file" accept=".RC0,.xml" />
+  </div>
+
+  <div id="result" style="display:none;"></div>
+</main>
+
+<footer>
+  <div>RC-505mk2 .RC0 viewer · parameter mappings derived from BOSS Parameter Guide v1.3</div>
+  <div class="disclaimer">
+    Best-effort labelling. Params marked with "?" are inferred from PDF order and may be wrong.
+    Toggle the "Show raw values" checkbox on any section to see the unmapped XML tag data.
+  </div>
+</footer>
+
+<script>
+// ===========================================================================
+// RC-505mk2 .RC0 parameter mappings
+// Derived from the RC-505mk2 Parameter Guide (Ver 1.3+) and Owner's Manual.
+// Mappings are best-effort: bold labels = confident; "?" suffix = guessed
+// based on PDF order; unmapped indices fall back to raw "A=value" display.
+// ===========================================================================
+
+// --- Enum value lookups -----------------------------------------------------
+
+const ENUMS = {
+  OFF_ON: ['OFF', 'ON'],
+  START_MODE: ['IMMEDIATE', 'FADE'],
+  STOP_MODE: ['IMMEDIATE', 'FADE', 'LOOP'],
+  DUB_MODE: ['OVERDUB', 'REPLACE1', 'REPLACE2'],
+  PLAY_MODE: ['MULTI', 'SINGLE'],
+  LOOP_SYNC_MODE: ['IMMEDIATE', 'MEASURE', 'LOOP LENGTH'],
+  TEMPO_SYNC_MODE: ['PITCH', 'XFADE'],
+  TEMPO_SYNC_SPEED: ['HALF', 'NORMAL', 'DOUBLE'],
+  REC_ACTION: ['REC→DUB', 'REC→PLAY'],
+  QUANTIZE: ['OFF', 'MEASURE'],
+  STRK_CHANGE: ['IMMEDIATE', 'LOOP END', 'MEASURE'],
+  SPEED_CHANGE: ['IMMEDIATE', 'LOOP END'],
+  SYNC_ADJUST: ['MEASURE', 'BEAT'],
+  FX_MODE: ['SINGLE', 'MULTI'],
+  FX_SW_MODE: ['TOGGLE', 'MOMENT'],
+  FX_INSERT_INPUT: ['ALL', 'MIC1', 'MIC2', 'INST1-L', 'INST1-R', 'INST2-L', 'INST2-R'],
+  FX_INSERT_TRACK: ['ALL', 'TRACK1', 'TRACK2', 'TRACK3', 'TRACK4', 'TRACK5'],
+
+  // Rhythm
+  RHYTHM_GENRE: ['ACOUSTIC', 'BALLAD', 'BLUES', 'JAZZ', 'FUSION', 'R&B', 'SOUL', 'FUNK',
+                 'POP', 'SOFT ROCK', 'ROCK', 'ALT ROCK', 'PUNK', 'HEAVY ROCK', 'METAL',
+                 'TRAD', 'WORLD', 'BALLRM', 'ELCTRO', 'GUIDE', 'USER'],
+  RHYTHM_VARIATION: ['A', 'B', 'C', 'D'],
+  RHYTHM_KIT: ['STUDIO', 'LIVE', 'LIGHT', 'HEAVY', 'ROCK', 'METAL', 'JAZZ', 'BRUSH',
+               'CAJON', 'DRUM&BASS', 'R&B', 'DANCE', 'TECHNO', 'DANCE BEATS', 'HIPHOP', '808+909'],
+  RHYTHM_BEAT: ['2/4', '3/4', '4/4', '5/4', '6/4', '7/4', '5/8', '6/8', '7/8', '8/8',
+                '9/8', '10/8', '11/8', '12/8', '13/8', '14/8', '15/8'],
+  START_TRIG: ['LOOP START', 'REC END', 'BEFORE LOOP'],
+  STOP_TRIG: ['OFF', 'LOOP STOP', 'REC END'],
+  VAR_CHANGE: ['MEASURE', 'LOOP END'],
+
+  // System
+  PHANTOM: ['OFF', 'ON'],
+  INST_GAIN: ['INST', 'LINE'],
+};
+
+// --- FX type list (49 input FX types, 53 track FX = input + 4 track-only) ---
+// Order is the device firmware's FX_TYPE storage index. Verified against
+// real memory files. NOTE: at indices 40/41, the firmware stores GRANULAR
+// DELAY first (40) then TAPE ECHO 2 (41), even though Boss's published
+// "FX Assign Values" reference table lists them the other way around.
+// FX type list — first 49 entries (0-48) are shared between Input FX and
+// Track FX. Beyond that, the lists diverge.
+const FX_TYPES_SHARED = [
+  'LPF', 'BPF', 'HPF', 'PHASER', 'FLANGER', 'SYNTH', 'LO-FI', 'RADIO', 'RING MOD',
+  'G2B', 'SUSTAINER', 'AUTO RIFF', 'SLOW GEAR', 'TRANSPOSE', 'PITCH BEND', 'ROBOT',
+  'ELECTRIC', 'HRM MANUAL', 'HRM AUTO (M)', 'VOCODER', 'OSC VOC (M)', 'OSC BOT',
+  'PREAMP', 'DIST', 'DYNAMICS', 'EQ', 'ISOLATOR', 'OCTAVE', 'AUTO PAN', 'MANUAL PAN',
+  'STEREO ENHANCE', 'TREMOLO', 'VIBRATO', 'PATTERN SLICER', 'STEP SLICER', 'DELAY',
+  'PANNING DELAY', 'REVERSE DELAY', 'MOD DELAY',
+  'TAPE ECHO 1',     // 39 (MK2-native)
+  'GRANULAR DELAY',  // 40
+  'TAPE ECHO 2',     // 41 (legacy MK1 import)
+  'WARP',            // 42
+  'TWIST',           // 43
+  'FREEZE',          // 44
+  'CHORUS',          // 45 (verified)
+  'REVERB',          // 46 (verified)
+  'ROLL 1',          // 47
+  'ROLL 2',          // 48
+];
+
+// Input FX has Gate Reverb / Reverse Reverb at indices 49-50.
+// (Track-only effects don't exist in Input FX context.)
+const FX_TYPES_INPUT = [...FX_TYPES_SHARED,
+  'GATE REVERB',     // 49 in Input FX
+  'REVERSE REVERB',  // 50 in Input FX
+];
+
+// Track FX has the 4 track-only effects at 49-52, then Gate/Reverse Reverb
+// at 53-54. Verified: Track FX Bank A slot A default = type 49 = Beat Scatter.
+const FX_TYPES_TRACK = [...FX_TYPES_SHARED,
+  'BEAT SCATTER',    // 49 in Track FX
+  'BEAT REPEAT',     // 50
+  'BEAT SHIFT',      // 51
+  'VINYL FLICK',     // 52
+  'GATE REVERB',     // 53
+  'REVERSE REVERB',  // 54
+];
+
+// Default reference used when context is unknown (e.g. raw view).
+// Uses the Track FX ordering as the canonical full list.
+const FX_TYPES = FX_TYPES_TRACK;
+
+// ---- Device menu display order ----
+// The device's FX selector menu lists effects in a different order than the
+// file's internal storage indexing. Notable differences:
+//   - Menu shows tape echoes as TE1, TE2, GD (file stores them as TE1, GD, TE2)
+//   - Menu shows Roll 1, Roll 2 right after Twist (file puts them after Reverb)
+//   - Menu shows reverbs (Gate, Reverse) at the end before beat-only effects,
+//     while the file puts beat-only at 49-52 then GR/RR at 53-54
+// We keep a separate "display order" list per FX kind, and translate between
+// display indexes and file (storage) indexes via helper functions.
+
+// Input FX menu order — matches the device's menu. Beat-only effects never
+// appear in Input FX.
+const FX_DISPLAY_INPUT = [
+  // 0-38: same as file
+  'LPF','BPF','HPF','PHASER','FLANGER','SYNTH','LO-FI','RADIO','RING MOD',
+  'G2B','SUSTAINER','AUTO RIFF','SLOW GEAR','TRANSPOSE','PITCH BEND','ROBOT',
+  'ELECTRIC','HRM MANUAL','HRM AUTO (M)','VOCODER','OSC VOC (M)','OSC BOT',
+  'PREAMP','DIST','DYNAMICS','EQ','ISOLATOR','OCTAVE','AUTO PAN','MANUAL PAN',
+  'STEREO ENHANCE','TREMOLO','VIBRATO','PATTERN SLICER','STEP SLICER','DELAY',
+  'PANNING DELAY','REVERSE DELAY','MOD DELAY',
+  // 39-41: menu shows TE1, TE2, GD
+  'TAPE ECHO 1','TAPE ECHO 2','GRANULAR DELAY',
+  // 42-43: Warp, Twist
+  'WARP','TWIST',
+  // 44-45: Roll 1, Roll 2 (menu shows these right after Twist)
+  'ROLL 1','ROLL 2',
+  // 46-48: Freeze, Chorus, Reverb
+  'FREEZE','CHORUS','REVERB',
+  // 49-50: gate/reverse reverb
+  'GATE REVERB','REVERSE REVERB',
+];
+
+// Track FX slot A menu order — same as Input FX, with beat-only effects
+// appended at the end. The track-only FX (Beat Scatter/Repeat/Shift, Vinyl
+// Flick) can only be assigned to slot A of any track FX bank.
+const FX_DISPLAY_TRACK_SLOTA = [
+  ...FX_DISPLAY_INPUT,
+  'BEAT SCATTER','BEAT REPEAT','BEAT SHIFT','VINYL FLICK',
+];
+
+// Track FX slots B/C/D: same as Input FX (no beat-only effects available).
+const FX_DISPLAY_TRACK_OTHER = FX_DISPLAY_INPUT;
+
+// Get the display-order list for a given context.
+// Track-only effects are available in any TRACK bank's slot A.
+function getDisplayList(fxKind, slotLetter) {
+  if (fxKind === 'track' && slotLetter === 'A') return FX_DISPLAY_TRACK_SLOTA;
+  if (fxKind === 'track') return FX_DISPLAY_TRACK_OTHER;
+  return FX_DISPLAY_INPUT;
+}
+
+// Translation: display index → file (storage) index.
+// Maps the position in the device's menu to the actual type_idx stored in
+// the RC0 file. THIS IS PURELY FOR DROPDOWN VISUAL ORDERING — the file
+// storage mapping (FX_XML_ORDER_*) is the source of truth for what each
+// file idx means, and we never change that here.
+//
+// Menu (display) | File (storage)
+//   39 TE1       |  39 TE1
+//   40 TE2       |  41 TE2
+//   41 GD        |  40 GD
+//   42 Warp      |  42 Warp
+//   43 Twist     |  43 Twist
+//   44 Roll 1    |  47 Roll 1
+//   45 Roll 2    |  48 Roll 2
+//   46 Freeze    |  44 Freeze
+//   47 Chorus    |  45 Chorus
+//   48 Reverb    |  46 Reverb
+//   49 GR        |  49 GR (input) | 53 GR (track)
+//   50 RR        |  50 RR (input) | 54 RR (track)
+//   51-54 beat-only (track only) | 49-52 in file
+const DISPLAY_TO_FILE_42_50 = {
+  42: 42, 43: 43,  // Warp, Twist
+  44: 47, 45: 48,  // Roll 1, Roll 2
+  46: 44, 47: 45, 48: 46,  // Freeze, Chorus, Reverb
+};
+const FILE_TO_DISPLAY_42_48 = {
+  42: 42, 43: 43,
+  47: 44, 48: 45,  // Roll 1, Roll 2 (file 47/48 → menu 44/45)
+  44: 46, 45: 47, 46: 48,  // Freeze, Chorus, Reverb
+};
+
+function displayIdxToFileIdx(displayIdx, fxKind) {
+  if (displayIdx <= 38) return displayIdx;
+  if (displayIdx === 39) return 39;  // TE1
+  if (displayIdx === 40) return 41;  // TE2
+  if (displayIdx === 41) return 40;  // GD
+  if (displayIdx >= 42 && displayIdx <= 48) {
+    return DISPLAY_TO_FILE_42_50[displayIdx];
+  }
+  // 49+: depends on FX kind
+  if (fxKind === 'input') {
+    // 49 = Gate Reverb, 50 = Reverse Reverb (same in file)
+    return displayIdx;
+  }
+  // Track FX:
+  //   menu 49 = GR (file 53), menu 50 = RR (file 54),
+  //   menu 51-54 = beat-only (file 49-52)
+  const trackMap = { 49: 53, 50: 54, 51: 49, 52: 50, 53: 51, 54: 52 };
+  return trackMap[displayIdx] ?? displayIdx;
+}
+
+function fileIdxToDisplayIdx(fileIdx, fxKind) {
+  if (fileIdx <= 38) return fileIdx;
+  if (fileIdx === 39) return 39;
+  if (fileIdx === 40) return 41;
+  if (fileIdx === 41) return 40;
+  if (fileIdx >= 42 && fileIdx <= 48) {
+    return FILE_TO_DISPLAY_42_48[fileIdx];
+  }
+  if (fxKind === 'input') return fileIdx;
+  // Track FX:
+  const fileToDisplay = { 49: 51, 50: 52, 51: 53, 52: 54, 53: 49, 54: 50 };
+  return fileToDisplay[fileIdx] ?? fileIdx;
+}
+
+// Map XML suffix → display name (used when we want to look up by element name)
+const FX_XML_NAMES = {
+  LPF: 'LPF', BPF: 'BPF', HPF: 'HPF', PHASER: 'PHASER', FLANGER: 'FLANGER',
+  SYNTH: 'SYNTH', LOFI: 'LO-FI', RADIO: 'RADIO', RING_MODULATOR: 'RING MOD',
+  G2B: 'G2B', SUSTAINER: 'SUSTAINER', AUTO_RIFF: 'AUTO RIFF', SLOW_GEAR: 'SLOW GEAR',
+  TRANSPOSE: 'TRANSPOSE', PITCH_BEND: 'PITCH BEND', ROBOT: 'ROBOT', ELECTRIC: 'ELECTRIC',
+  HARMONIST_MANUAL: 'HRM MANUAL', HARMONIST_AUTO: 'HRM AUTO (M)',
+  VOCODER: 'VOCODER', OSC_VOCODER: 'OSC VOC (M)', OSC_BOT: 'OSC BOT',
+  PREAMP: 'PREAMP', DIST: 'DIST', DYNAMICS: 'DYNAMICS', EQ: 'EQ',
+  ISOLATOR: 'ISOLATOR', OCTAVE: 'OCTAVE', AUTO_PAN: 'AUTO PAN', MANUAL_PAN: 'MANUAL PAN',
+  STEREO_ENHANCE: 'STEREO ENHANCE', TREMOLO: 'TREMOLO', VIBRATO: 'VIBRATO',
+  PATTERN_SLICER: 'PATTERN SLICER', STEP_SLICER: 'STEP SLICER',
+  DELAY: 'DELAY', PANNING_DELAY: 'PANNING DELAY', REVERSE_DELAY: 'REVERSE DELAY',
+  MOD_DELAY: 'MOD DELAY',
+  // The XML element TAPE_ECHO stores data for the device's Tape Echo 2 (new
+  // algorithm with delay-encoded Time, cut filters). TAPE_ECHO_V505V2 stores
+  // data for Tape Echo 1 (old algorithm with numeric Repeat Rate, Bass/Treble).
+  // XML names are based on internal versioning, not the device's display label.
+  TAPE_ECHO: 'TAPE ECHO 2',
+  TAPE_ECHO_V505V2: 'TAPE ECHO 1',
+  GRANULAR_DELAY: 'GRANULAR DELAY', WARP: 'WARP', TWIST: 'TWIST',
+  ROLL: 'ROLL 2',
+  ROLL_V505V2: 'ROLL 1',
+  FREEZE: 'FREEZE',
+  CHORUS: 'CHORUS', REVERB: 'REVERB', GATE_REVERB: 'GATE REVERB',
+  REVERSE_REVERB: 'REVERSE REVERB',
+  BEAT_SCATTER: 'BEAT SCATTER', BEAT_REPEAT: 'BEAT REPEAT',
+  BEAT_SHIFT: 'BEAT SHIFT', VINYL_FLICK: 'VINYL FLICK',
+};
+
+function panFmt(v) {
+  // PAN: 0-100 where 50 = CENTER
+  if (v === 50) return 'CENTER';
+  if (v < 50) return 'L' + (50 - v);
+  return 'R' + (v - 50);
+}
+
+// EQ frequency lookup. The device uses an ISO-standard 1/3-octave spacing.
+// EQ_FREQS_MID goes 20 Hz to 10 kHz (28 values) — used for Lo-Mid Freq /
+// Hi-Mid Freq parameters in EQ effects.
+// EQ_FREQS_CUT goes 20 Hz to 12.5 kHz (29 values) — used for Low Cut /
+// High Cut in delay/reverb/chorus/stereo-enhance effects.
+const EQ_FREQS_MID = [
+  20, 25, 31.5, 40, 50, 63, 80, 100,
+  125, 160, 200, 250, 315, 400, 500, 630,
+  800, 1000, 1250, 1600, 2000, 2500, 3150, 4000,
+  5000, 6300, 8000, 10000,
+];
+const EQ_FREQS_CUT = [
+  20, 25, 31.5, 40, 50, 63, 80, 100,
+  125, 160, 200, 250, 315, 400, 500, 630,
+  800, 1000, 1250, 1600, 2000, 2500, 3150, 4000,
+  5000, 6300, 8000, 10000, 12500,
+];
+
+function fmtFreqHz(hz) {
+  if (hz === undefined) return null;
+  if (hz >= 1000) return (hz / 1000) + ' kHz';
+  return hz + ' Hz';
+}
+// Used for EQ Lo-Mid / Hi-Mid Freq (no FLAT option, just frequencies).
+function fmtEqFreq(v) {
+  const s = fmtFreqHz(EQ_FREQS_MID[v]);
+  return s !== null ? s : String(v);
+}
+// Used for delay/reverb/chorus/etc Low Cut.
+// Index 0 = FLAT (low cut disabled), then 1+ = 20 Hz upward.
+function fmtLowCut(v) {
+  if (v === 0) return 'FLAT';
+  const s = fmtFreqHz(EQ_FREQS_CUT[v - 1]);
+  return s !== null ? s : String(v);
+}
+// Used for delay/reverb/chorus/etc High Cut.
+// Indices 0..N-1 = 20 Hz upward; last index = FLAT (high cut disabled).
+function fmtHighCut(v) {
+  if (v === EQ_FREQS_CUT.length) return 'FLAT';
+  const s = fmtFreqHz(EQ_FREQS_CUT[v]);
+  return s !== null ? s : String(v);
+}
+
+// Fade Time encoding (PLAY positions 1 and 2). 4 note values then measures.
+//   0 = 16th, 1 = 8th, 2 = quarter, 3 = half,
+//   4 = 1 MEAS, 5 = 2 MEAS (default), 6 = 3 MEAS, ..., 67 = 64 MEAS.
+// Verified by toggle test (set in=16th and out=1 MEAS).
+function fmtFadeTime(v) {
+  const notes = ['1/16', '1/8', '1/4', '1/2'];
+  if (v < 4) return notes[v];
+  return (v - 3) + ' MEAS';
+}
+// Reverb Time: stored as v/10 in seconds (range 0.1-10.0s, default 3.0s = stored 30).
+function fmtReverbTime(v) {
+  return (v / 10).toFixed(1) + ' s';
+}
+
+// Delay-family Time encoding: values 0-10 are 11 musical notes (ascending
+// duration), values 11+ are ms (value 11 = 0 ms, value 12 = 1 ms, ...,
+// value 211 = 200 ms which is the default). Affects DELAY, PANNING_DELAY,
+// REVERSE_DELAY, MOD_DELAY, TAPE_ECHO 2, ROLL 1, ROLL 2.
+const DELAY_NOTES = [
+  '𝅘𝅥𝅯𝅯',         // 32nd
+  '𝅘𝅥𝅯',          // 16th
+  '𝅘𝅥𝅮³',         // 8th triplet
+  '𝅘𝅥𝅯.',         // dotted 16th
+  '𝅘𝅥𝅮',          // 8th
+  '𝅘𝅥³',          // quarter triplet
+  '𝅘𝅥𝅮.',         // dotted 8th
+  '𝅘𝅥',           // quarter
+  '𝅗𝅥³',          // half triplet
+  '𝅘𝅥.',          // dotted quarter
+  '𝅗𝅥',           // half
+];
+function fmtDelayTime(v) {
+  if (v < DELAY_NOTES.length) return DELAY_NOTES[v];
+  return (v - 11) + ' ms';
+}
+
+// Roll-specific time formatter. Roll's note indexing is offset by 1 from
+// Delay's (i.e. file value 8 = quarter, where Delay's value 7 = quarter).
+// Reason unclear — Roll may include an extra "shortest" note we haven't
+// identified, OR may simply use a different ordering. Marked as (?) until
+// verified more thoroughly.
+function fmtRollTime(v) {
+  if (v < DELAY_NOTES.length + 1) {
+    // Subtract 1 to align with our delay note array
+    if (v === 0) return '(?)';
+    return DELAY_NOTES[v - 1];
+  }
+  return (v - 12) + ' ms';
+}
+
+// Lo-Fi bit depth: index 0 = OFF, then 1 = 31 down to 31 = 1.
+// Device shows just the number (e.g. "8"), no "-bit" suffix.
+function fmtLofiBitDepth(v) {
+  if (v === 0) return 'OFF';
+  return String(32 - v);
+}
+// Lo-Fi sample rate: index 0 = OFF, then divisors 1/2, 1/3, ..., 1/32.
+function fmtLofiSampleRate(v) {
+  if (v === 0) return 'OFF';
+  return '1/' + (v + 1);
+}
+
+// dB offset: 0=-20dB, 20=0dB, 40=+20dB. Used by Sustainer Low/Hi Gain.
+function fmtGainOffset20(v) {
+  const db = v - 20;
+  if (db === 0) return '0 dB';
+  return (db > 0 ? '+' : '') + db + ' dB';
+}
+
+// Auto Riff key list. Stored as 0-11. The device labels them with both
+// the major and (parenthesized) relative minor: "C (Am)" etc.
+const AUTO_RIFF_KEYS = [
+  'C (Am)',  'Db (Bbm)', 'D (Bm)',  'Eb (Cm)',
+  'E (C#m)', 'F (Dm)',   'F# (D#m)','G (Em)',
+  'Ab (Fm)', 'A (F#m)',  'Bb (Gm)', 'B (G#m)',
+];
+
+// Signed offset formatter: shows -N for negative, 0 for zero, +N for positive.
+// e.g. fmtSignedOffset(12)(0) → '-12', fmtSignedOffset(12)(12) → '0',
+//      fmtSignedOffset(12)(24) → '+12'
+function fmtSignedOffset(offset) {
+  return v => {
+    const x = v - offset;
+    if (x === 0) return '0';
+    return (x > 0 ? '+' : '') + x;
+  };
+}
+
+// Auto Riff phrase: stored as 0-29, displayed as P01-P30.
+function fmtAutoRiffPhrase(v) {
+  return 'P' + String(v + 1).padStart(2, '0');
+}
+
+// Generic pattern formatter: 0-indexed → P01, P02, ...
+function fmtPattern(v) {
+  return 'P' + String(v + 1).padStart(2, '0');
+}
+
+// MIDI note name formatter. Stored value 0 = C1 (the lowest note the device
+// shows). Device range is C1 to G9 per the Parameter Guide (max stored = 103).
+// Note name convention matches the device: flats for most accidentals (Db,
+// Eb, Ab, Bb), but F# uses the sharp spelling.
+function fmtMidiNote(v) {
+  const names = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+  const octave = Math.floor(v / 12) + 1;
+  return names[v % 12] + octave;
+}
+
+// Per-effect parameter labels. Each entry: {p: 'param name', e?: enum array, fmt?: fn}
+// Order matches the PDF parameter listings.
+const FX_PARAMS = {
+  LPF: [
+    {p:'Rate', fmt:formatSeqRate}, {p:'Depth'}, {p:'Resonance'}, {p:'Cutoff'},
+    {p:'Step Rate', fmt:formatStepRate}
+  ],
+  BPF: [
+    {p:'Rate', fmt:formatSeqRate}, {p:'Depth'}, {p:'Resonance'}, {p:'Cutoff'},
+    {p:'Step Rate', fmt:formatStepRate}
+  ],
+  HPF: [
+    {p:'Rate', fmt:formatSeqRate}, {p:'Depth'}, {p:'Resonance'}, {p:'Cutoff'},
+    {p:'Step Rate', fmt:formatStepRate}
+  ],
+  PHASER: [
+    // File storage order verified by device check on memory 90 baseline:
+    // A=Rate(3=1/2), B=Depth(50), C=Resonance(50), D=Manual(50),
+    // E=E.Level(100), F=D.Level(100), G=Step Rate(0=OFF), H=Stage(1='8').
+    // Note: file groups E.Level before D.Level (opposite of manual listing).
+    {p:'Rate', fmt:formatSeqRate}, {p:'Depth'}, {p:'Resonance'}, {p:'Manual'},
+    {p:'E.Level'}, {p:'D.Level'},
+    {p:'Step Rate', fmt:formatStepRate},
+    {p:'Stage', e:['4','8','12','BI-PHASE']}
+  ],
+  FLANGER: [
+    {p:'Rate', fmt:formatSeqRate}, {p:'Depth'}, {p:'Resonance'}, {p:'Manual'},
+    {p:'Step Rate', fmt:formatStepRate}, {p:'D.Level'}, {p:'E.Level'}, {p:'Separation'}
+  ],
+  SYNTH: [
+    {p:'Frequency'}, {p:'Resonance'}, {p:'Decay'}, {p:'Balance'}
+  ],
+  LOFI: [
+    {p:'Bit Depth', fmt:fmtLofiBitDepth}, {p:'Sample Rate', fmt:fmtLofiSampleRate}, {p:'Balance'}
+  ],
+  RADIO: [{p:'Lo-Fi', fmt:v=>String(v+1)}, {p:'Level'}],
+  RING_MODULATOR: [
+    {p:'Frequency'}, {p:'Balance'}, {p:'Mode', e:['1','2']}
+  ],
+  G2B: [{p:'Balance'}, {p:'Mode', e:['1','2']}],
+  SUSTAINER: [
+    {p:'Attack'}, {p:'Release'}, {p:'Level'},
+    {p:'Low Gain', fmt:fmtGainOffset20}, {p:'Hi Gain', fmt:fmtGainOffset20}, {p:'Sustain'}
+  ],
+  AUTO_RIFF: [
+    {p:'Phrase', fmt:fmtAutoRiffPhrase}, {p:'Tempo', fmt:formatSeqRate},
+    {p:'Hold', e:ENUMS.OFF_ON},
+    {p:'Attack'}, {p:'Loop', e:ENUMS.OFF_ON}, {p:'Key', e:AUTO_RIFF_KEYS}, {p:'Balance'}
+  ],
+  SLOW_GEAR: [
+    {p:'Sens'}, {p:'Rise Time'}, {p:'Level'}, {p:'Mode', e:['1','2']}
+  ],
+  TRANSPOSE: [
+    {p:'Trans', fmt:fmtSignedOffset(12)},
+    {p:'Mode', e:['1','2']}
+  ],
+  PITCH_BEND: [
+    {p:'Pitch', e:['-3 OCT','-2 OCT','-1 OCT','+1 OCT','+2 OCT','+3 OCT','+4 OCT']},
+    {p:'Bend'}, {p:'Mode', e:['1','2']}
+  ],
+  ROBOT: [
+    {p:'Note', e:['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']},
+    {p:'Formant', fmt:fmtSignedOffset(50)}, {p:'Mode', e:['1','2']}
+  ],
+  ELECTRIC: [
+    {p:'Shift', fmt:fmtSignedOffset(12)},
+    {p:'Formant', fmt:fmtSignedOffset(50)},
+    {p:'Speed'},
+    {p:'Stability', fmt:fmtSignedOffset(10)},
+    {p:'Scale', fmt:v => v===0 ? 'CHROMATIC' : (AUTO_RIFF_KEYS[v-1] || String(v))}
+  ],
+  HARMONIST_MANUAL: [
+    {p:'Voice', e:['OCT-','-6TH','-5TH','-4TH','-3RD','UNISON',
+                   '+3RD','+4TH','+5TH','+6TH','OCT+']},
+    {p:'Formant', fmt:fmtSignedOffset(50)}, {p:'Pan', fmt:v=>panFmt(v)},
+    {p:'Key', e:AUTO_RIFF_KEYS}, {p:'D.Level'}, {p:'Hrm Level'}
+  ],
+  HARMONIST_AUTO: [
+    {p:'Voice', e:['OCT-','OCT+','LOWER','LOW','HIGH','HIGHER','UNISON']},
+    {p:'Formant', fmt:fmtSignedOffset(50)}, {p:'Pan', fmt:v=>panFmt(v)},
+    {p:'Hrm Mode', e:['HYBRID','AUTO']}, {p:'Key', e:AUTO_RIFF_KEYS},
+    {p:'D.Level'}, {p:'Hrm Level'}
+  ],
+  VOCODER: [
+    {p:'Carrier', e:['MIC1','MIC2','INST1-L','INST1-R','INST2-L','INST2-R',
+                     'TRACK1','TRACK2','TRACK3','TRACK4','TRACK5']},
+    {p:'Tone', fmt:fmtSignedOffset(50)}, {p:'Attack'},
+    {p:'Mod Sens', fmt:fmtSignedOffset(50)}, {p:'Balance'}, {p:'Carrier Thru', e:ENUMS.OFF_ON}
+  ],
+  OSC_VOCODER: [
+    {p:'Carrier', e:['SAW','VINTAGE SAW','DETUNE SAW','SQUARE','RECT']},
+    {p:'Tone', fmt:fmtSignedOffset(50)}, {p:'Attack'},
+    {p:'Octave', e:['-2OCT','-1OCT','0','+1OCT']},
+    {p:'Mod Sens', fmt:fmtSignedOffset(50)}, {p:'Release'}, {p:'Balance'}
+  ],
+  OSC_BOT: [
+    {p:'Osc', e:['SAW','VINTAGE SAW','DETUNE SAW','SQUARE','RECT']},
+    {p:'Tone', fmt:fmtSignedOffset(50)}, {p:'Attack'},
+    {p:'Note', fmt:fmtMidiNote}, {p:'Mod Sens', fmt:fmtSignedOffset(50)}, {p:'Balance'}
+  ],
+  PREAMP: [
+    {p:'Amp Type', e:['JC-120','NATURAL CLEAN','FULL RANGE','COMBO CRUNCH',
+      'STACK CRUNCH','HIGAIN STACK','POWER DRIVE','EXTREM LEAD','CORE METAL']},
+    {p:'Spk Type', e:['OFF','ORIGINAL','1x8"','1x10"','1x12"','2x12"','4x10"','4x12"','8x12"']},
+    {p:'Gain'},
+    {p:'T-Comp'},  // Device shows as plain 0-20 (not signed) — default 10
+    {p:'Bass'}, {p:'Middle'},
+    {p:'Treble'}, {p:'Presence'},
+    {p:'Mic Type', e:['DYN57','DYN421','CND451','CND87','FLAT']},
+    {p:'Mic Dis', e:['OFF MIC','ON MIC']},
+    {p:'Mic Pos', fmt:v => v===0 ? 'CENTER' : (v + ' cm')},
+    {p:'E.Level'}
+  ],
+  DIST: [
+    {p:'Type', e:['VOCAL','BOOST','OD','DS','METAL','FUZZ']},
+    {p:'Tone', fmt:fmtSignedOffset(50)}, {p:'Dist'}, {p:'D.Level'}, {p:'E.Level'}
+  ],
+  DYNAMICS: [
+    {p:'Type', e:['NATURAL COMP','MIXER COMP','LIVE COMP','NATURAL LIM','HARD LIM',
+      'JINGL COMP','HARD COMP','SOFT COMP','CLEAN COMP','DANCE COMP','ORCH COMP',
+      'VOCAL COMP','ACOUSTIC','ROCK BAND','ORCHESTRA','LOW BOOST','BRIGHTEN',
+      "DJs VOICE",'PHONE VOX']},
+    {p:'Dynamics', fmt:fmtSignedOffset(20)}
+  ],
+  EQ: [
+    // File storage order: Lo Gain, Hi Gain, Lo-Mid Gain, Hi-Mid Gain, Level,
+    // Lo-Mid Freq, Lo-Mid Q, Hi-Mid Freq, Hi-Mid Q.
+    // (Device display order is different — LO GAIN, HI GAIN, then LO MID
+    // (Freq/Q/Gain), HI MID (Freq/Q/Gain), Level — but storage groups gains
+    // first then freq/Q pairs.)
+    {p:'Lo Gain', fmt:v=>(v-20)+' dB'},
+    {p:'Hi Gain', fmt:v=>(v-20)+' dB'},
+    {p:'Lo-Mid Gain', fmt:v=>(v-20)+' dB'},
+    {p:'Hi-Mid Gain', fmt:v=>(v-20)+' dB'},
+    {p:'Level', fmt:v=>(v-20)+' dB'},
+    {p:'Lo-Mid Freq', fmt:fmtEqFreq},
+    {p:'Lo-Mid Q', e:['0.5','1','2','4','8','16']},
+    {p:'Hi-Mid Freq', fmt:fmtEqFreq},
+    {p:'Hi-Mid Q', e:['0.5','1','2','4','8','16']},
+  ],
+  ISOLATOR: [
+    {p:'Band', e:['LOW','MIDDLE','HIGH']}, {p:'Rate', fmt:formatSeqRate}, {p:'Band Level'},
+    {p:'Depth'}, {p:'Step Rate', fmt:formatStepRate}, {p:'Waveform', e:['TRI','SQR']}
+  ],
+  OCTAVE: [
+    // File storage order verified: Octave (A), Oct.Level (B), Mode (C).
+    // Default values: A=0(-1OCT), B=50 (Oct.Level), C=1 (Mode 2).
+    {p:'Octave', e:['-1OCT','-2OCT','-1OCT&-2OCT']},
+    {p:'Oct.Level'},
+    {p:'Mode', e:['1','2']}
+  ],
+  AUTO_PAN: [
+    {p:'Rate', fmt:formatSeqRate}, {p:'Waveform'}, {p:'Depth'}, {p:'Init Phase'},
+    {p:'Step Rate', fmt:formatStepRate}
+  ],
+  MANUAL_PAN: [{p:'Position', fmt:v=>panFmt(v)}],
+  STEREO_ENHANCE: [
+    {p:'Low Cut', fmt:fmtLowCut}, {p:'High Cut', fmt:fmtHighCut}, {p:'Enhance'}
+  ],
+  TREMOLO: [{p:'Rate', fmt:formatSeqRate}, {p:'Depth'}, {p:'Waveform'}],
+  VIBRATO: [
+    {p:'Rate', fmt:formatSeqRate}, {p:'Depth'}, {p:'Color'}, {p:'D.Level'}, {p:'E.Level'}
+  ],
+  PATTERN_SLICER: [
+    {p:'Rate', fmt:formatSeqRate}, {p:'Duty', fmt:v=>String(v+1)}, {p:'Attack'},
+    {p:'Pattern', fmt:fmtPattern},
+    {p:'Depth'},
+    {p:'Threshold', fmt:v=>(v-30)+' dB'},  // range -30 to 0 dB, default -30 (stored 0)
+    {p:'Gain', fmt:v=>{if(v===0)return '0 dB'; return (v>0?'+':'')+v+' dB';}}
+  ],
+  STEP_SLICER: [
+    // The Step Slicer has TWO 16-step sequencers (step length + step level),
+    // controlled by a single Step Max. Beyond the standard FX_PARAMS positions,
+    // file positions C–R store the step-length sequence and S–7 store the
+    // step-level sequence. Position 8 = Depth, 9 = Threshold, # = Gain.
+    // Only A and B (Rate, Step Max) are exposed here as regular params; the
+    // step sequencers and trailing params need custom rendering (TODO).
+    {p:'Rate', fmt:formatSeqRate},
+    {p:'Step Max', fmt:v=>String(v+1)},  // stored 0-15, displayed 1-16
+  ],
+  DELAY: [
+    {p:'Time', fmt:fmtDelayTime}, {p:'Feedback'}, {p:'D.Level'},
+    {p:'Low Cut', fmt:fmtLowCut}, {p:'High Cut', fmt:fmtHighCut}, {p:'E.Level'}
+  ],
+  PANNING_DELAY: [
+    {p:'Time', fmt:fmtDelayTime}, {p:'Feedback'}, {p:'D.Level'},
+    {p:'Low Cut', fmt:fmtLowCut}, {p:'High Cut', fmt:fmtHighCut}, {p:'E.Level'}
+  ],
+  REVERSE_DELAY: [
+    {p:'Time', fmt:fmtDelayTime}, {p:'Feedback'}, {p:'D.Level'},
+    {p:'Low Cut', fmt:fmtLowCut}, {p:'High Cut', fmt:fmtHighCut}, {p:'E.Level'}
+  ],
+  MOD_DELAY: [
+    {p:'Time', fmt:fmtDelayTime}, {p:'Feedback'}, {p:'Mod Depth'}, {p:'D.Level'},
+    {p:'Low Cut', fmt:fmtLowCut}, {p:'High Cut', fmt:fmtHighCut}, {p:'E.Level'}
+  ],
+  TAPE_ECHO: [
+    // Stores data for the device's "Tape Echo 2" (legacy MK1 import):
+    // delay-time encoded Time, delay-style cut filters.
+    // Baseline: A=211 (200ms), D=0 (low FLAT), E=29 (high FLAT).
+    {p:'Time', fmt:fmtDelayTime}, {p:'Feedback'}, {p:'D.Level'},
+    {p:'Low Cut', fmt:fmtLowCut}, {p:'High Cut', fmt:fmtHighCut}, {p:'E.Level'}
+  ],
+  TAPE_ECHO_V505V2: [
+    // Stores data for the device's "Tape Echo 1" (MK2-native algorithm):
+    // numeric 0-100 Repeat Rate, Bass/Treble tone controls.
+    {p:'Repeat Rate'}, {p:'Intensity'}, {p:'D.Level'},
+    {p:'Bass', fmt:fmtSignedOffset(50)}, {p:'Treble', fmt:fmtSignedOffset(50)}, {p:'E.Level'}
+  ],
+  GRANULAR_DELAY: [{p:'Time'}, {p:'Feedback'}, {p:'E.Level'}],
+  WARP: [{p:'Level'}],
+  TWIST: [{p:'Release', e:['FALL','FADE']}, {p:'Rise'}, {p:'Fall'}, {p:'Level'}],
+  ROLL: [
+    {p:'Time', fmt:fmtRollTime}, {p:'Feedback'},
+    {p:'Roll', e:['OFF','1/2','1/4','1/8','1/16']}, {p:'Balance'}
+  ],
+  ROLL_V505V2: [
+    {p:'Time', fmt:fmtRollTime},
+    {p:'Repeat', fmt:v=>v>100?'INF':String(v)},  // 1-100 numeric, then INF
+    {p:'Roll', e:['OFF','1/2','1/4','1/8','1/16']}, {p:'Balance'}
+  ],
+  FREEZE: [
+    {p:'Attack'}, {p:'Release'}, {p:'Decay'}, {p:'Sustain'}, {p:'Balance'}
+  ],
+  CHORUS: [
+    // Param order: Rate, Depth, Low Cut, High Cut, D.Level, E.Level.
+    // Same low/high-cut encoding as the delays (verified by user spec).
+    // Baseline: A=64 Rate, B=50 Depth, C=0 (Low Cut FLAT), D=29 (High Cut FLAT),
+    //           E=100 (D.Level), F=50 (E.Level).
+    {p:'Rate', fmt:formatSeqRate}, {p:'Depth'},
+    {p:'Low Cut', fmt:fmtLowCut},
+    {p:'High Cut', fmt:fmtHighCut},
+    {p:'D.Level'}, {p:'E.Level'}
+  ],
+  REVERB: [
+    // Param order: Time, Pre Delay, Density, Low Cut, High Cut, D.Level, E.Level.
+    // Same low/high-cut encoding as the delays (verified by user spec).
+    // Baseline: A=30 (3.0s), B=0 (0ms), C=4 (Density=4), D=0 (Low Cut FLAT),
+    //           E=29 (High Cut FLAT), F=100 (D.Level), G=50 (E.Level).
+    {p:'Time', fmt:fmtReverbTime}, {p:'Pre Delay', fmt:v=>v+' ms'},
+    {p:'Density'},
+    {p:'Low Cut', fmt:fmtLowCut},
+    {p:'High Cut', fmt:fmtHighCut},
+    {p:'D.Level'}, {p:'E.Level'}
+  ],
+  GATE_REVERB: [
+    // Param order: Time, Pre Delay, Threshold, Low Cut, High Cut, D.Level, E.Level.
+    {p:'Time', fmt:fmtReverbTime}, {p:'Pre Delay', fmt:v=>v+' ms'},
+    {p:'Threshold'},
+    {p:'Low Cut', fmt:fmtLowCut},
+    {p:'High Cut', fmt:fmtHighCut},
+    {p:'D.Level'}, {p:'E.Level'}
+  ],
+  REVERSE_REVERB: [
+    // Note: Time default per device might be 0.5s not 3.0s (baseline A=5),
+    // so the Time encoding might be different for this effect specifically.
+    // Marked (?). Low/High Cut use the same encoding as the delays.
+    {p:'Time (?)', fmt:fmtReverbTime}, {p:'Pre Delay', fmt:v=>v+' ms'},
+    {p:'Gate Time', fmt:v=>(v/10).toFixed(1)+' s'},
+    {p:'Low Cut', fmt:fmtLowCut},
+    {p:'High Cut', fmt:fmtHighCut},
+    {p:'D.Level'}, {p:'E.Level'}
+  ],
+  BEAT_SCATTER: [{p:'Type', fmt:fmtPattern}, {p:'Length'}],
+  BEAT_REPEAT: [{p:'Type', e:['FORWARD','REWIND','MIX']}, {p:'Length'}],
+  BEAT_SHIFT: [{p:'Type', e:['FUTURE','PAST']}, {p:'Shift'}],
+  VINYL_FLICK: [{p:'Flick'}],
+};
+
+// --- MEASURE setting decoder ----------------------------------------------
+// The TRACK MEASURE setting is encoded across 4 separate bytes in the file
+// (positions 9, 17, 18, 19 = <J>, <R>, <S>, <T>).
+//
+//   <J> = user-facing enum:
+//     0=AUTO, 1=FREE, 2=(reserved/32nd, not in menu), 3=16th, 4=8th,
+//     5=quarter, 6=half, 7=(reserved, not in menu), 8=1 meas, 9=2 meas...
+//     Pattern: J = N+7 for N measures.
+//
+//   <R> = mode flag: 0=AUTO, 1=FREE, 2=specific length
+//   <S> = measure count: 0 for free/auto/note values, N for N measures
+//   <T> = note subdivision: 0=measure/free/auto, 1=32nd, 2=16th, 3=8th,
+//         4=quarter, 5=half
+//
+// Verified by experiments on a real device.
+function measureLabelFromJ(j) {
+  if (j === 0) return 'AUTO';
+  if (j === 1) return 'FREE';
+  if (j === 2) return '1/32 (reserved)';
+  if (j === 3) return '1/16';
+  if (j === 4) return '1/8';
+  if (j === 5) return '1/4';
+  if (j === 6) return '1/2';
+  if (j === 7) return '(reserved)';
+  if (j >= 8) return (j - 7) + ' meas';
+  return '?';
+}
+
+// Bitmask formatter for INPUT/RHYTHM routing entries (H-N in ROUTING).
+// 7 bits, verified by experiment on a real device:
+//   bit0=MIC1, bit1=MIC2, bit2=INST1L, bit3=INST1R,
+//   bit4=INST2L, bit5=INST2R, bit6=RHYTHM
+function bitmaskInput(v) {
+  // Compact form: list which inputs are OFF. If all on, just say "ALL ON".
+  // If nothing on, "ALL OFF". Otherwise, prefix with "off: ".
+  const names = ['MIC1','MIC2','INST1L','INST1R','INST2L','INST2R','RHY'];
+  const off = names.filter((_,i) => !(v & (1<<i)));
+  if (off.length === 0) return v + ' (all on)';
+  if (off.length === names.length) return v + ' (all off)';
+  return v + ' (off: ' + off.join(',') + ')';
+}
+
+// Bitmask formatter for TRACK routing entries (A-G in ROUTING) and the
+// All Start/Stop track masks in PLAY and the Bounce Track Mask in REC.
+// Bits 0-4 = tracks 1-5 (verified). Bits 5 and 6 are unconfirmed:
+//   - Bit 5 is always set in defaults (default value 63 = bits 0-5 on),
+//     suggesting it might be a 6th track slot reserved for the RC-600
+//     (which has 6 tracks and likely shares firmware lineage), but this
+//     isn't proven.
+//   - Bit 6 is always off in defaults; purpose unknown.
+// We hide bits 5/6 from the "off" list to keep the display clean, but
+// flag them visibly if either is set to an unexpected state.
+function bitmaskTrack(v) {
+  const namedBits = ['TRK1','TRK2','TRK3','TRK4','TRK5'];
+  // Off list only mentions tracks 1-5 (the verified bits)
+  const off = namedBits.filter((_,i) => !(v & (1<<i)));
+  const bit5Set = !!(v & (1 << 5));
+  const bit6Set = !!(v & (1 << 6));
+
+  let label;
+  if (off.length === 0) label = v + ' (all on)';
+  else if (off.length === namedBits.length) label = v + ' (all off)';
+  else label = v + ' (off: ' + off.join(',') + ')';
+
+  // Bit 5 ON is the normal/default state; flag only if OFF (unusual).
+  // Bit 6 OFF is the normal state; flag only if ON (unusual).
+  const flags = [];
+  if (!bit5Set) flags.push({label:'b5 off', tip:
+    'Bit 5 is normally set in this field. Its purpose is unconfirmed but ' +
+    'may reserve a 6th track slot (the firmware appears related to the ' +
+    'RC-600 which has 6 tracks). Off here is unusual.'});
+  if (bit6Set) flags.push({label:'b6 on', tip:
+    'Bit 6 is normally off in this field. Its purpose is unknown.'});
+
+  if (flags.length === 0) return label;
+
+  const wrap = document.createElement('span');
+  wrap.appendChild(document.createTextNode(label));
+  for (const f of flags) {
+    wrap.appendChild(document.createTextNode(' '));
+    const marker = document.createElement('span');
+    marker.className = 'bit-unknown';
+    marker.textContent = '?' + f.label;
+    marker.title = f.tip;
+    wrap.appendChild(marker);
+  }
+  return wrap;
+}
+
+// --- SEQ (step sequencer) tables -------------------------------------------
+// The SEQ section has the structure: SW, Sync, Retrig, Target, Rate, Max,
+// then 16 step values (0-100). The rate enum: indices 0-13 are musical
+// note divisions in monotonically descending duration order, then 14+
+// are numeric percentages 0-100 (so value 14 = 0%, value 114 = 100%).
+// Order verified against the device's UI by an RC-505mk2 owner.
+const SEQ_RATE_NOTES = [
+  '4 MEAS',   // 0
+  '2 MEAS',   // 1
+  '1 MEAS',   // 2
+  '\u00bd',   // 3  half (open head with stem)
+  '\u00bc.',  // 4  dotted quarter
+  '\u00bdT',  // 5  half triplet
+  '\u00bc',   // 6  quarter
+  '\u215b.',  // 7  dotted 8th
+  '\u00bcT',  // 8  quarter triplet
+  '\u215b',   // 9  8th
+  '1/16.',    // 10 dotted 16th
+  '\u215bT',  // 11 8th triplet
+  '1/16',     // 12 16th
+  '1/32',     // 13 32nd
+];
+function formatSeqRate(v) {
+  if (v < SEQ_RATE_NOTES.length) return SEQ_RATE_NOTES[v];
+  // 14+ → plain numeric value 0-100 (device shows no unit/suffix)
+  return String(v - SEQ_RATE_NOTES.length);
+}
+
+// Per-FX "Step Rate" parameter (e.g. LPF, BPF, HPF, PHASER, FLANGER...).
+// Same as SEQ rates EXCEPT 0 = OFF, and everything else is shifted by 1:
+//   0=OFF, 1=4MEAS, 2=2MEAS, 3=1MEAS, ..., 14=32nd, 15+=numeric 0-100%.
+// (This is distinct from the sequencer's own "Rate" which has no OFF option.)
+function formatStepRate(v) {
+  if (v === 0) return 'OFF';
+  return formatSeqRate(v - 1);
+}
+
+// SEQ Target options per FX type. Index into this array → which parameter
+// the sequencer modulates. Order taken from the Parameter Guide's "★"
+// markers next to params (some are inferred from context).
+const SEQ_TARGETS = {
+  LPF:           ['DEPTH', 'CUTOFF'],
+  BPF:           ['DEPTH', 'CUTOFF'],
+  HPF:           ['DEPTH', 'CUTOFF'],
+  PHASER:        ['DEPTH', 'RESONANCE', 'MANUAL', 'E.LEVEL'],
+  FLANGER:       ['DEPTH', 'RESONANCE', 'MANUAL', 'E.LEVEL'],
+  SYNTH:         ['FREQ', 'RESONANCE', 'DECAY'],
+  RING_MODULATOR:['FREQUENCY'],
+  TRANSPOSE:     ['TRANS'],
+  PITCH_BEND:    ['BEND'],
+  OSC_BOT:       ['NOTE'],
+  ISOLATOR:      ['DEPTH'],
+  OCTAVE:        ['OCT.LEVEL'],
+  MANUAL_PAN:    ['POSITION'],
+  TREMOLO:       ['DEPTH'],
+  VIBRATO:       ['DEPTH'],
+};
+
+// --- Section parameter maps ------------------------------------------------
+// Each entry: index in section's children (A=0, B=1, C=2...) → label config.
+// Maps based on PDF parameter order. Unknown indices fall back to raw.
+
+const SECTION_MAPS = {
+  NAME: {
+    // 12 chars, ASCII decoded
+    _decode: 'ascii_name'
+  },
+  TRACK: {
+    // 25 params. Positions 0-9 and 11-21 and 24 are all verified by saving
+    // controlled changes to a real RC-505mk2 and diffing the resulting .RC0
+    // files. Positions 10, 22, 23 remain unknown — they all read 0 in
+    // baseline memories and haven't yielded to toggle tests yet.
+    0: {p:'Reverse', e:ENUMS.OFF_ON},
+    1: {p:'1Shot', e:ENUMS.OFF_ON},
+    2: {p:'Pan', fmt:panFmt},
+    3: {p:'Play Level'},
+    4: {p:'Start Mode', e:ENUMS.START_MODE},
+    5: {p:'Stop Mode', e:ENUMS.STOP_MODE},
+    6: {p:'Dub Mode', e:ENUMS.DUB_MODE},
+    7: {p:'FX', e:ENUMS.OFF_ON},
+    8: {p:'Play Mode', e:ENUMS.PLAY_MODE},
+    9: {p:'Measure', fmt:measureLabelFromJ},   // J - verified
+    // Positions 10-15 hold the Loop Sync SW / Tempo Sync / Bounce In settings.
+    // Position 11 (L) is Loop Sync SW. Loop Sync MODE is NOT in this block —
+    // it's stored at position 24 (Y), see below. Position 10 (K) is unknown
+    // (always reads 0 in baselines; never changed during testing).
+    10:{p:'(unknown)', fmt:v=>String(v)},                 // K - unknown
+    11:{p:'Loop Sync SW', e:ENUMS.OFF_ON},                // L - VERIFIED
+    12:{p:'Tempo Sync SW', e:ENUMS.OFF_ON},               // M - VERIFIED
+    13:{p:'Tempo Sync Mode', e:ENUMS.TEMPO_SYNC_MODE},    // N - VERIFIED
+    14:{p:'Tempo Sync Speed', e:ENUMS.TEMPO_SYNC_SPEED},  // O - VERIFIED
+    15:{p:'Bounce In', e:ENUMS.OFF_ON},                   // P - VERIFIED
+    16:{p:'Input Mask', fmt:bitmaskInput},
+    17:{p:'Measure Mode', fmt:v => v===0?'AUTO':(v===1?'FREE':(v===2?'specific':String(v)))},
+    18:{p:'Measure Count'},     // number of measures when in specific-measures mode
+    19:{p:'Note Subdivision', fmt:v => {
+        const subs = ['none','1/32','1/16','1/8','1/4','1/2'];
+        return v + (subs[v] ? ' ('+subs[v]+')' : '');
+    }},
+    20:{p:'Tempo', fmt:v=>(v/10).toFixed(1) + ' BPM'},
+    21:{p:'Length', fmt:v=>v + ' samples'},
+    22:{p:'(internal)'},
+    23:{p:'(internal)'},
+    // Position 24 (Y) is Loop Sync Mode, verified by mode-change test:
+    // 0=Immediate, 1=Measure, 2=Loop Length (default).
+    24:{p:'Loop Sync Mode', e:ENUMS.LOOP_SYNC_MODE},
+  },
+  MASTER: {
+    // 4 params: tempo, internal measure data, etc
+    0: {p:'Tempo', fmt:v=>(v/10).toFixed(1) + ' BPM'},
+    1: {p:'Loop Length (samples?)'},
+    2: {p:'Internal (?)'},
+    3: {p:'Internal (?)'},
+  },
+  REC: {
+    0: {p:'Rec Action', e:ENUMS.REC_ACTION},
+    1: {p:'Quantize', e:ENUMS.QUANTIZE},
+    2: {p:'Auto Rec SW', e:ENUMS.OFF_ON},
+    3: {p:'Auto Rec Sens'},
+    4: {p:'Bounce SW', e:ENUMS.OFF_ON},   // verified by toggle test
+    5: {p:'Bounce Track Mask', fmt:bitmaskTrack},
+  },
+  PLAY: {
+    // Per Parameter Guide page 4. CURRENT TRACK appears to NOT be stored in
+    // memory (it's transient runtime state), so file mapping skips it.
+    0: {p:'S.Trk Change', e:ENUMS.STRK_CHANGE},
+    1: {p:'Fade Time In', fmt:fmtFadeTime},   // verified: 16th/8th/quarter/half + 1-64 MEAS
+    2: {p:'Fade Time Out', fmt:fmtFadeTime},   // same encoding
+    3: {p:'All Start Track Mask', fmt:bitmaskTrack},
+    4: {p:'All Stop Track Mask', fmt:bitmaskTrack},
+    5: {p:'Loop Length'},    // 0=AUTO, otherwise number of measures (1-25362)
+    6: {p:'Speed Change', e:ENUMS.SPEED_CHANGE},
+    7: {p:'Sync Adjust', e:ENUMS.SYNC_ADJUST},
+  },
+  RHYTHM: {
+    0: {p:'Genre', e:ENUMS.RHYTHM_GENRE},          // verified
+    1: {p:'Pattern (per-genre idx)'},               // verified - resets on genre change
+    2: {p:'Variation', e:ENUMS.RHYTHM_VARIATION},  // verified
+    3: {p:'(unknown)'},                             // always 0 in tests
+    4: {p:'Kit', e:ENUMS.RHYTHM_KIT},               // verified
+    5: {p:'Beat', e:ENUMS.RHYTHM_BEAT},             // verified (idx 0='2/4')
+    6: {p:'Start Trig (?)', e:ENUMS.START_TRIG},    // tentative
+    7: {p:'Intro Rec', e:ENUMS.OFF_ON},             // verified
+    8: {p:'Intro Play (?)', e:ENUMS.OFF_ON},        // tentative
+    9: {p:'Ending (?)', e:ENUMS.OFF_ON},            // tentative
+    10: {p:'Fill (?)', e:ENUMS.OFF_ON},             // tentative
+    11: {p:'Stop Trig (?)', e:ENUMS.STOP_TRIG},     // tentative (baseline=1, not default OFF)
+    12: {p:'Var. Change (?)', e:ENUMS.VAR_CHANGE},  // tentative
+    12: {p:'(internal)'},  // not documented in Parameter Guide
+  },
+  INPUT: {
+    0: {p:'Phantom MIC1', e:ENUMS.OFF_ON},
+    1: {p:'Phantom MIC2', e:ENUMS.OFF_ON},
+    2: {p:'INST1 Gain', e:ENUMS.INST_GAIN},
+    3: {p:'INST2 Gain', e:ENUMS.INST_GAIN},
+    4: {p:'Stereo Link MIC', e:ENUMS.OFF_ON},
+    5: {p:'Stereo Link INST1', e:ENUMS.OFF_ON},
+    6: {p:'Stereo Link INST2', e:ENUMS.OFF_ON},
+    // Verified by toggle tests: positions 7-12 are the dynamics-page settings.
+    // Each MIC channel has Comp + NS; INST channels have NS only. Layout is
+    // grouped by type then channel:
+    //   Comp:  MIC1, MIC2
+    //   NS:    MIC1, MIC2, INST1, INST2
+    // Comp defaults to 0, NS defaults to 40.
+    7: {p:'MIC1 Comp'},
+    8: {p:'MIC2 Comp'},
+    9: {p:'MIC1 NS'},
+    10:{p:'MIC2 NS'},
+    11:{p:'INST1 NS'},
+    12:{p:'INST2 NS'},
+  },
+  OUTPUT: {
+    0: {p:'Output Knob', e:['ALL','MASTER','PHONES','OFF']},
+    1: {p:'Stereo Link MAIN', e:ENUMS.OFF_ON},
+    2: {p:'Stereo Link SUB1', e:ENUMS.OFF_ON},
+    3: {p:'Stereo Link SUB2', e:ENUMS.OFF_ON},
+  },
+  ROUTING: {
+    // 19 params total. The ROUTING block in memory files holds a partial
+    // copy of routing config; SYSTEM1.RC0 holds the active state for any
+    // destination whose preference is set to "system" rather than "memory".
+    //
+    // Track routing bitmasks (A-G): one byte per output destination.
+    // Each bit = "does track N route here?" — bit positions for tracks
+    // are unverified.
+    0: {p:'Track→MAIN-L', fmt:bitmaskTrack},
+    1: {p:'Track→MAIN-R', fmt:bitmaskTrack},
+    2: {p:'Track→SUB1-L', fmt:bitmaskTrack},
+    3: {p:'Track→SUB1-R', fmt:bitmaskTrack},
+    4: {p:'Track→SUB2-L', fmt:bitmaskTrack},
+    5: {p:'Track→SUB2-R', fmt:bitmaskTrack},
+    6: {p:'Track→PHONES', fmt:bitmaskTrack},
+    // Input/rhythm routing bitmasks (H-N): one byte per destination.
+    // Bit positions verified by experiment:
+    //   bit0=MIC1, bit1=MIC2, bit2=INST1L, bit3=INST1R,
+    //   bit4=INST2L, bit5=INST2R, bit6=RHYTHM
+    7: {p:'Input→MAIN-L', fmt:bitmaskInput},
+    8: {p:'Input→MAIN-R', fmt:bitmaskInput},
+    9: {p:'Input→SUB1-L', fmt:bitmaskInput},
+    10:{p:'Input→SUB1-R', fmt:bitmaskInput},
+    11:{p:'Input→SUB2-L', fmt:bitmaskInput},
+    12:{p:'Input→SUB2-R', fmt:bitmaskInput},
+    13:{p:'Input→PHONES', fmt:bitmaskInput},
+    // Loose tail params (O-S) — best-effort labeling.
+    14:{p:'PHONES OUT (?)', e:['MAIN-L,R','SUB1-L,R','SUB2-L,R','INDIVIDUAL']},
+    15:{p:'PHONES MONITOR (?)', e:ENUMS.OFF_ON},
+    16:{p:'INPUT THRU (?)', e:ENUMS.OFF_ON},
+    17:{p:'RHYTHM OUT (?)', e:['OUTPUT','LOOP']},
+    18:{p:'(unknown, default 1)'},
+  },
+  MIXER: {
+    // 22 params - levels for various inputs/outputs
+    0: {p:'MIC 1 In'}, 1: {p:'MIC 2 In'},
+    2: {p:'INST1 L In'}, 3: {p:'INST1 R In'},
+    4: {p:'INST2 L In'}, 5: {p:'INST2 R In'},
+    6: {p:'MAIN L Out'}, 7: {p:'MAIN R Out'},
+    8: {p:'SUB1 L Out'}, 9: {p:'SUB1 R Out'},
+    10:{p:'SUB2 L Out'}, 11:{p:'SUB2 R Out'},
+    12:{p:'Loop Out'}, 13:{p:'Rhythm Out'},
+    14:{p:'Phones Out'}, 15:{p:'Master Out'},
+    16:{p:'(internal)'}, 17:{p:'(internal)'},
+    18:{p:'(internal)'}, 19:{p:'(internal)'},
+    20:{p:'(internal)'}, 21:{p:'(internal)'},
+  },
+  MASTER_FX: {
+    // All three positions verified by toggle test.
+    // Comp range: 0=OFF, 1-40. Reverb range: 0=OFF, 1-100.
+    0: {p:'Compressor', fmt:v => v === 0 ? 'OFF' : String(v)},
+    1: {p:'Reverb', fmt:v => v === 0 ? 'OFF' : String(v)},
+    2: {p:'Insert', e:['MAIN-L','MAIN-R','SUB1-L','SUB1-R','SUB2-L','SUB2-R','OFF']},
+  },
+  SETUP: {
+    0: {p:'Setup byte (?)'},
+  },
+  ASSIGN: {
+    0: {p:'SW', e:ENUMS.OFF_ON},
+    1: {p:'Source (index)'},
+    2: {p:'Source Mode', e:['MOMENT','TOGGLE']},
+    3: {p:'Source Act Lo'},
+    4: {p:'Source Act Hi'},
+    5: {p:'Target (index)'},
+    6: {p:'Target Min'},
+    7: {p:'Target Max'},
+    8: {p:'(internal)'},
+    9: {p:'(internal)'},
+  },
+  EQ: {
+    // System EQ params (12 fields), verified against baseline EQ_MIC1.
+    // Stored in the same order as the Parameter Guide page 9.
+    0: {p:'SW', e:ENUMS.OFF_ON},
+    1: {p:'Lo Gain', fmt:v=>(v-20)+' dB'},
+    2: {p:'Hi Gain', fmt:v=>(v-20)+' dB'},
+    3: {p:'Lo-Mid Freq', fmt:fmtEqFreq},
+    4: {p:'Lo-Mid Q', e:['0.5','1','2','4','8','16']},
+    5: {p:'Lo-Mid Gain', fmt:v=>(v-20)+' dB'},
+    6: {p:'Hi-Mid Freq', fmt:fmtEqFreq},
+    7: {p:'Hi-Mid Q', e:['0.5','1','2','4','8','16']},
+    8: {p:'Hi-Mid Gain', fmt:v=>(v-20)+' dB'},
+    9: {p:'Level', fmt:v=>(v-20)+' dB'},
+    10:{p:'Lo Cut', fmt:fmtLowCut},   // FLAT, 20-800 Hz
+    11:{p:'Hi Cut', fmt:fmtHighCut},  // 630 Hz-12.5 kHz, FLAT
+  },
+  // For each FX bank container (top-level <A>/<B>/<C>/<D>): 3 params
+  FX_BANK: {
+    0: {p:'Bank SW', e:ENUMS.OFF_ON},
+    1: {p:'Bank Mode', e:ENUMS.FX_MODE},
+    2: {p:'FX Target', e:['A','B','C','D']},
+  },
+  // For each effect slot AA/AB/.../DD: 4 params
+  FX_SLOT: {
+    0: {p:'SW', e:ENUMS.OFF_ON},
+    1: {p:'SW Mode', e:ENUMS.FX_SW_MODE},
+    2: {p:'FX Type', fmt:v => FX_TYPES[v] || ('Type ' + v)},
+    3: {p:'Insert', fmt:v=>String(v)},  // depends on input vs track
+  },
+  // FX sequence settings (suffix _SEQ): 22 params total per PDF.
+  // Order: SW, Sync, Retrig, Target, Rate, Max, then 16 step values.
+  FX_SEQ: {
+    0: {p:'SW', e:ENUMS.OFF_ON},
+    1: {p:'Sync', e:ENUMS.OFF_ON},
+    2: {p:'Retrig', e:ENUMS.OFF_ON},
+    3: {p:'Target'},
+    4: {p:'Rate', fmt:formatSeqRate},
+    5: {p:'Max'},
+    6: {p:'Val 1'},  7: {p:'Val 2'},  8: {p:'Val 3'},  9: {p:'Val 4'},
+    10:{p:'Val 5'}, 11:{p:'Val 6'}, 12:{p:'Val 7'}, 13:{p:'Val 8'},
+    14:{p:'Val 9'}, 15:{p:'Val 10'},16:{p:'Val 11'},17:{p:'Val 12'},
+    18:{p:'Val 13'},19:{p:'Val 14'},20:{p:'Val 15'},21:{p:'Val 16'},
+  },
+  // Footswitch / pedal assignments — mostly internal
+  ECTL: {
+    0: {p:'Function'},
+    1: {p:'Min'},
+    2: {p:'Max'},
+  },
+};
+
+// Sections that map to TRACK params (TRACK1-TRACK6) — TRACK6 is mysterious; the
+// PDF only documents tracks 1-5. TRACK6 may store the "RHYTHM" track or a
+// reserved slot.
+const TRACK_SECTION_NOTE = 'TRACK6 not in user manual — likely a reserved/rhythm track';
+
+</script>
+<script>
+'use strict';
+
+// ============================================================================
+// XML parsing + section dispatch
+// ============================================================================
+
+function parseRC0(text) {
+  // The .RC0 format has a few XML quirks we need to fix up:
+  //   1) Single-char tag names like <0>..<9> and <#> aren't valid XML names.
+  //      We rewrite them: <0>..<9> → <_0>..<_9>,  <#> → <_h>
+  //   2) After </database> there's a trailing <count>NNNN</count> element
+  //      (a backup version counter). We strip it because it's outside the
+  //      document root and DOMParser rejects it.
+  let fixed = text
+    .replace(/<(\/?)([0-9])>/g, '<$1_$2>')
+    .replace(/<(\/?)#>/g, '<$1_h>');
+
+  // strip trailing <count>...</count> after </database>
+  fixed = fixed.replace(/<\/database>\s*<count>[^<]*<\/count>\s*$/, '</database>');
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(fixed, 'text/xml');
+  const err = doc.querySelector('parsererror');
+  if (err) throw new Error('XML parse error: ' + err.textContent.slice(0, 200));
+  const database = doc.documentElement;
+  if (database.tagName !== 'database') {
+    throw new Error('Root element is <' + database.tagName + '>, expected <database>');
+  }
+  const mem = database.querySelector(':scope > mem');
+  if (!mem) throw new Error('No <mem> element found — is this a RC-505mk2 .RC0 file?');
+  // Return the whole context so we can also reach <ifx> and <tfx> siblings.
+  return {
+    mem,
+    ifx: database.querySelector(':scope > ifx'),
+    tfx: database.querySelector(':scope > tfx'),
+    database,
+  };
+}
+
+function sectionParams(el) {
+  // returns array of { tag, val } in document order, only direct children.
+  // Strip our escape prefix so users see the original tag names.
+  const out = [];
+  for (const child of el.children) {
+    let tag = child.tagName;
+    if (tag === '_h') tag = '#';
+    else if (/^_[0-9]$/.test(tag)) tag = tag.slice(1);
+    out.push({ tag, val: child.textContent.trim() });
+  }
+  return out;
+}
+
+function findSection(mem, name) {
+  return mem.querySelector(':scope > ' + cssEscape(name));
+}
+function cssEscape(s) {
+  // tags may begin with letter; trivial here. Use attribute selector to be safe.
+  return s.replace(/([^a-zA-Z0-9_-])/g, '\\$1');
+}
+
+// Decode NAME section: 12 ASCII chars in <A>..<L>
+function decodeName(nameEl) {
+  if (!nameEl) return '(unnamed)';
+  const codes = [...nameEl.children].map(c => parseInt(c.textContent, 10));
+  return String.fromCharCode(...codes.filter(n => n > 0)).replace(/\s+$/, '') || '(blank)';
+}
+
+// ============================================================================
+// Rendering helpers
+// ============================================================================
+
+function el(tag, cls, ...kids) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  for (const k of kids) {
+    if (k == null) continue;
+    if (typeof k === 'string' || typeof k === 'number') n.appendChild(document.createTextNode(k));
+    else n.appendChild(k);
+  }
+  return n;
+}
+
+// Render a set of params using a section map. Returns DOM.
+function renderParams(params, map, opts = {}) {
+  const grid = el('div', 'params');
+  const showRaw = opts.showRaw;
+  const trackInputBitfield = opts.trackInputBitfield;
+
+  params.forEach((p, idx) => {
+    const m = map[idx];
+    if (!m) {
+      if (showRaw) {
+        grid.appendChild(el('div', 'k', `[${p.tag}] idx ${idx}`));
+        grid.appendChild(el('div', 'v raw', p.val));
+      }
+      return;
+    }
+    const isUncertain = /\?/.test(m.p);
+    const kCls = 'k' + (isUncertain ? ' uncertain' : '');
+    const kLabel = m.p.replace(/\s*\(\?\)\s*$/, '');
+    grid.appendChild(el('div', kCls, kLabel));
+
+    let display = p.val;
+    let vCls = 'v';
+    const num = parseInt(p.val, 10);
+
+    if (m.e) {
+      const opt = m.e[num];
+      display = (opt !== undefined) ? opt : ('? (' + p.val + ')');
+      vCls += ' enum';
+      if (display === 'ON') vCls += ' on';
+      else if (display === 'OFF') vCls += ' off';
+    } else if (m.fmt) {
+      try { display = m.fmt(num); } catch (e) { display = p.val; }
+    }
+    if (isUncertain) vCls += ' uncertain';
+    if (String(display).length > 12) vCls += ' long';
+    grid.appendChild(el('div', vCls, display));
+  });
+
+  return grid;
+}
+
+function renderRawDump(params) {
+  const grid = el('div', 'params');
+  params.forEach(p => {
+    grid.appendChild(el('div', 'k', p.tag));
+    grid.appendChild(el('div', 'v raw', p.val));
+  });
+  return grid;
+}
+
+function withRawToggle(section, paramsEl, rawEl) {
+  let showingRaw = false;
+  const toggle = el('label', 'raw-toggle');
+  const cb = el('input');
+  cb.type = 'checkbox';
+  toggle.appendChild(cb);
+  toggle.appendChild(document.createTextNode('Show raw XML values'));
+  cb.addEventListener('change', () => {
+    showingRaw = cb.checked;
+    paramsEl.style.display = showingRaw ? 'none' : '';
+    rawEl.style.display = showingRaw ? '' : 'none';
+  });
+  rawEl.style.display = 'none';
+  section.appendChild(toggle);
+  section.appendChild(paramsEl);
+  section.appendChild(rawEl);
+}
+
+// ============================================================================
+// Section renderers
+// ============================================================================
+
+function renderTracksTab(mem) {
+  const wrap = el('div');
+  wrap.appendChild(legend());
+
+  const grid = el('div', 'tracks-grid-5');
+  for (let i = 1; i <= 5; i++) {
+    const t = findSection(mem, 'TRACK' + i);
+    if (!t) continue;
+    const params = sectionParams(t);
+    const card = el('div', 'track-card');
+
+    const head = el('h3');
+    head.appendChild(el('span', null, 'Track ' + i));
+    head.appendChild(el('span', 'badge', `${params.length} fields`));
+    card.appendChild(head);
+
+    const paramsEl = renderParams(params, SECTION_MAPS.TRACK);
+    const rawEl = renderRawDump(params);
+    withRawToggle(card, paramsEl, rawEl);
+
+    grid.appendChild(card);
+  }
+  wrap.appendChild(grid);
+
+  // TRACK6 + MASTER as auxiliary info — kept as 2-up below
+  const aux = el('div');
+  aux.style.marginTop = '28px';
+  const auxGrid = el('div', 'tracks-grid');
+
+  const master = findSection(mem, 'MASTER');
+  if (master) {
+    const card = el('div', 'track-card');
+    card.appendChild(el('h3', null, el('span', null, 'Master / Tempo'), el('span', 'badge', 'memory-level')));
+    const params = sectionParams(master);
+    const paramsEl = renderParams(params, SECTION_MAPS.MASTER);
+    const rawEl = renderRawDump(params);
+    withRawToggle(card, paramsEl, rawEl);
+    auxGrid.appendChild(card);
+  }
+
+  const t6 = findSection(mem, 'TRACK6');
+  if (t6) {
+    const card = el('div', 'track-card');
+    card.appendChild(el('h3', null, el('span', null, 'Track 6'), el('span', 'badge', 'undocumented')));
+    const note = el('p');
+    note.style.fontSize = '11px';
+    note.style.color = 'var(--text-mute)';
+    note.style.fontStyle = 'italic';
+    note.textContent = 'Not documented in the user manual (which lists tracks 1–5 only). May be reserved or used for rhythm internally.';
+    card.appendChild(note);
+    const params = sectionParams(t6);
+    const paramsEl = renderParams(params, SECTION_MAPS.TRACK);
+    const rawEl = renderRawDump(params);
+    withRawToggle(card, paramsEl, rawEl);
+    auxGrid.appendChild(card);
+  }
+
+  aux.appendChild(auxGrid);
+  wrap.appendChild(aux);
+
+  return wrap;
+}
+
+function renderRecPlayTab(mem) {
+  const wrap = el('div');
+  wrap.appendChild(legend());
+  const grid = el('div', 'tracks-grid');
+
+  for (const name of ['REC', 'PLAY']) {
+    const sec = findSection(mem, name);
+    if (!sec) continue;
+    const card = el('div', 'track-card');
+    card.appendChild(el('h3', null, el('span', null, name)));
+    const params = sectionParams(sec);
+    const paramsEl = renderParams(params, SECTION_MAPS[name]);
+    const rawEl = renderRawDump(params);
+    withRawToggle(card, paramsEl, rawEl);
+    grid.appendChild(card);
+  }
+
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function renderRhythmTab(mem) {
+  const wrap = el('div');
+  wrap.appendChild(legend());
+  const sec = findSection(mem, 'RHYTHM');
+  if (!sec) {
+    wrap.appendChild(el('div', 'empty', 'No RHYTHM section found'));
+    return wrap;
+  }
+  const card = el('div', 'track-card');
+  card.appendChild(el('h3', null, el('span', null, 'Rhythm Settings')));
+  const params = sectionParams(sec);
+  const paramsEl = renderParams(params, SECTION_MAPS.RHYTHM);
+  const rawEl = renderRawDump(params);
+  withRawToggle(card, paramsEl, rawEl);
+  wrap.appendChild(card);
+  return wrap;
+}
+
+// XML element-name order for FX type sections (index → element suffix).
+// Note: Boss's XML element naming reflects each algorithm's heritage:
+//   - "_V505V2" suffix = "designed for the V505/RC-505mk2" (the newer one)
+//   - Plain name (TAPE_ECHO, ROLL) = legacy algorithm ported from RC-505mk1
+// So TAPE_ECHO_V505V2 = "Tape Echo 1" on the device (MK2-native algorithm),
+// TAPE_ECHO = "Tape Echo 2" (legacy MK1 import). Likewise for Roll 1 / Roll 2.
+//
+// Internal type indexing puts Granular Delay BETWEEN the two tape echoes
+// (TE1=39, GD=40, TE2=41), even though the device menu shows them as
+// TE1/TE2/GD. Verified by inspecting Track FX bank D defaults.
+//
+// Indices 0-48 are shared between Input FX and Track FX. Beyond that,
+// the lists diverge: Input FX gets Gate/Reverse Reverb at 49-50, while
+// Track FX gets the 4 track-only effects at 49-52 then Gate/Reverse Reverb
+// at 53-54.
+const FX_XML_ORDER_SHARED = [
+  'LPF','BPF','HPF','PHASER','FLANGER','SYNTH','LOFI','RADIO','RING_MODULATOR',
+  'G2B','SUSTAINER','AUTO_RIFF','SLOW_GEAR','TRANSPOSE','PITCH_BEND','ROBOT',
+  'ELECTRIC','HARMONIST_MANUAL','HARMONIST_AUTO','VOCODER','OSC_VOCODER','OSC_BOT',
+  'PREAMP','DIST','DYNAMICS','EQ','ISOLATOR','OCTAVE','AUTO_PAN','MANUAL_PAN',
+  'STEREO_ENHANCE','TREMOLO','VIBRATO','PATTERN_SLICER','STEP_SLICER',
+  'DELAY','PANNING_DELAY','REVERSE_DELAY','MOD_DELAY',
+  'TAPE_ECHO_V505V2',  // 39 = "Tape Echo 1"
+  'GRANULAR_DELAY',    // 40
+  'TAPE_ECHO',         // 41 = "Tape Echo 2"
+  'WARP',              // 42
+  'TWIST',             // 43
+  'FREEZE',            // 44
+  'CHORUS',            // 45
+  'REVERB',            // 46
+  'ROLL_V505V2',       // 47 = "Roll 1"
+  'ROLL',              // 48 = "Roll 2"
+];
+const FX_XML_ORDER_INPUT = [...FX_XML_ORDER_SHARED,
+  'GATE_REVERB','REVERSE_REVERB'
+];
+const FX_XML_ORDER_TRACK = [...FX_XML_ORDER_SHARED,
+  'BEAT_SCATTER','BEAT_REPEAT','BEAT_SHIFT','VINYL_FLICK',
+  'GATE_REVERB','REVERSE_REVERB'
+];
+
+// Default reference used when context is unknown. Track-style is the
+// canonical full list since it contains every effect.
+const FX_XML_ORDER = FX_XML_ORDER_TRACK;
+
+// Render a Step Slicer effect's parameters: standard top params (Rate, Step Max),
+// two 16-step bar sequences (Step Length and Step Level), and trailing params
+// (Depth, Threshold, Gain). The step values are 0-100 so bar heights map
+// directly.
+function renderStepSlicer(fxParams) {
+  const wrap = el('div');
+
+  // Top params: Rate, Step Max, Depth, Threshold, Gain.
+  // All numeric params sit above the bar charts so the visualisation gets
+  // the bottom of the slot card to itself.
+  const rateVal   = parseInt(fxParams[0]?.val ?? '0', 10);
+  const maxVal    = parseInt(fxParams[1]?.val ?? '0', 10);
+  const depthVal  = parseInt(fxParams[34]?.val ?? '0', 10);
+  const threshVal = parseInt(fxParams[35]?.val ?? '0', 10);
+  const gainVal   = parseInt(fxParams[36]?.val ?? '0', 10);
+  const numSteps  = maxVal + 1;  // stored 0-15 → displayed 1-16
+
+  const topGrid = el('div', 'params');
+  function row(label, value) {
+    topGrid.appendChild(el('span', 'k', label));
+    topGrid.appendChild(el('span', 'v', value));
+  }
+  row('Rate', formatSeqRate(rateVal));
+  row('Step Max', numSteps + '/16');
+  row('Depth', String(depthVal));
+  // Stored 0-30 → -30 to 0 dB (subtract 30)
+  row('Threshold', (threshVal - 30) + ' dB');
+  // Stored 0-20 → 0 to +20 dB
+  row('Gain', (gainVal > 0 ? '+' : '') + gainVal + ' dB');
+  wrap.appendChild(topGrid);
+
+  // Step bar helper — reused for both length and level sequences.
+  function makeStepBar(label, vals) {
+    const block = el('div', 'seq-block');
+    const head = el('div', 'seq-head');
+    head.appendChild(el('div', 'title', label));
+    block.appendChild(head);
+
+    const steps = el('div', 'seq-steps');
+    for (let i = 0; i < 16; i++) {
+      const v = vals[i] ?? 0;
+      const beyond = i >= numSteps;
+      const step = el('div', 'seq-step' + (v === 0 ? ' zero' : '') + (beyond ? ' beyond' : ''));
+      if (v > 0) {
+        step.style.height = Math.min(100, v) + '%';
+      }
+      const tip = el('div', 'tip', `Step ${i+1}: ${v}` + (beyond ? ' (inactive)' : ''));
+      step.appendChild(tip);
+      steps.appendChild(step);
+    }
+    block.appendChild(steps);
+
+    const nums = el('div', 'seq-numbers');
+    for (let i = 0; i < 16; i++) {
+      const beyond = i >= numSteps;
+      const v = vals[i] ?? 0;
+      const cell = el('div', 'cell' + (beyond ? ' beyond' : ''));
+      cell.appendChild(el('span', 'n', String(i+1).padStart(2,'0')));
+      cell.appendChild(el('span', 'v', String(v)));
+      nums.appendChild(cell);
+    }
+    block.appendChild(nums);
+    return block;
+  }
+
+  // Step Length: positions 2-17 (C through R)
+  const lengthVals = fxParams.slice(2, 18).map(p => parseInt(p.val, 10));
+  wrap.appendChild(makeStepBar('Step Length', lengthVals));
+
+  // Step Level: positions 18-33 (S through 7)
+  const levelVals = fxParams.slice(18, 34).map(p => parseInt(p.val, 10));
+  wrap.appendChild(makeStepBar('Step Level', levelVals));
+
+  return wrap;
+}
+
+// Render parameters for a specific FX type, looking up the section in the
+// XML root. fxKind ('input' or 'track') determines which type-index mapping
+// applies (indices 49+ differ between Input FX and Track FX).
+function renderFXTypeParams(root, slotName, typeIdx, fxKind) {
+  const order = fxKind === 'input' ? FX_XML_ORDER_INPUT : FX_XML_ORDER_TRACK;
+  const xmlSuffix = order[typeIdx];
+  if (!xmlSuffix) return null;
+  const fxSection = root.querySelector(':scope > ' + slotName + '_' + xmlSuffix);
+  if (!fxSection) return null;
+  const fxParams = sectionParams(fxSection);
+  // Step Slicer has two internal 16-step sequences plus trailing params;
+  // it gets its own custom renderer.
+  if (xmlSuffix === 'STEP_SLICER') {
+    return renderStepSlicer(fxParams);
+  }
+  const paramMap = FX_PARAMS[xmlSuffix];
+  if (!paramMap) {
+    return renderRawDump(fxParams);
+  }
+  const map = {};
+  paramMap.forEach((m, i) => { map[i] = m; });
+  return renderParams(fxParams, map);
+}
+
+// Render the sequencer block for a given slot/type. Many FX types don't
+// have a sequencer at all (no _SEQ child in the XML); returns null then.
+function renderSeq(root, slotName, typeIdx, fxKind) {
+  const order = fxKind === 'input' ? FX_XML_ORDER_INPUT : FX_XML_ORDER_TRACK;
+  const xmlSuffix = order[typeIdx];
+  if (!xmlSuffix) return null;
+  const seqSection = root.querySelector(':scope > ' + slotName + '_' + xmlSuffix + '_SEQ');
+  if (!seqSection) return null;
+
+  const params = sectionParams(seqSection);
+  if (params.length < 6) return null;
+
+  const sw     = params[0].val === '1';
+  const sync   = params[1].val === '1';
+  const retrig = params[2].val === '1';
+  const targetIdx = parseInt(params[3].val, 10);
+  const rateIdx   = parseInt(params[4].val, 10);
+  const maxIdx    = parseInt(params[5].val, 10); // stored 0-15 → 1-16 steps
+  const numSteps  = maxIdx + 1;
+  const stepVals  = params.slice(6, 22).map(p => parseInt(p.val, 10));
+
+  // Look up target name from per-FX-type table
+  const targetEnum = SEQ_TARGETS[xmlSuffix];
+  let targetLabel;
+  let targetUncertain = false;
+  if (targetEnum && targetEnum[targetIdx] !== undefined) {
+    targetLabel = targetEnum[targetIdx];
+  } else if (targetEnum) {
+    targetLabel = '? (idx ' + targetIdx + ')';
+    targetUncertain = true;
+  } else {
+    targetLabel = 'idx ' + targetIdx;
+    targetUncertain = true;
+  }
+
+  const block = el('div', 'seq-block' + (sw ? '' : ' off'));
+
+  // Header
+  const head = el('div', 'seq-head');
+  head.appendChild(el('div', 'title', 'Step Sequencer'));
+  head.appendChild(el('div', 'state-pill' + (sw ? ' on' : ''), sw ? 'ON' : 'OFF'));
+  block.appendChild(head);
+
+  // Meta grid
+  const meta = el('div', 'seq-meta');
+  function metaRow(k, v, cls) {
+    const row = el('div', 'row');
+    row.appendChild(el('span', 'k', k));
+    row.appendChild(el('span', 'v' + (cls ? ' ' + cls : ''), v));
+    return row;
+  }
+  meta.appendChild(metaRow('Sync',   sync   ? 'ON' : 'off'));
+  meta.appendChild(metaRow('Retrig', retrig ? 'ON' : 'off'));
+  meta.appendChild(metaRow('Target', targetLabel, targetUncertain ? 'uncert' : ''));
+  meta.appendChild(metaRow('Rate', formatSeqRate(rateIdx)));
+  meta.appendChild(metaRow('Steps', numSteps + '/16'));
+  block.appendChild(meta);
+
+  // OSC_BOT step values are MIDI note numbers (0 = C1, 103 = G9), so we
+  // format them as note names. Other FX use plain 0-100 numbers.
+  const isOscBot = (xmlSuffix === 'OSC_BOT');
+  const fmtStepVal = isOscBot ? fmtMidiNote : (v => String(v));
+  const stepRange = isOscBot ? 103 : 100;  // OSC_BOT range C1..G9 = 0..103
+
+  // Step bar visualization
+  const steps = el('div', 'seq-steps');
+  for (let i = 0; i < 16; i++) {
+    const v = stepVals[i] || 0;
+    const beyond = i >= numSteps;
+    const step = el('div', 'seq-step' + (v === 0 ? ' zero' : '') + (beyond ? ' beyond' : ''));
+    if (v > 0) {
+      step.style.height = Math.min(100, (v / stepRange) * 100) + '%';
+    }
+    // tooltip
+    const tip = el('div', 'tip', `Step ${i+1}: ${fmtStepVal(v)}` + (beyond ? ' (inactive)' : ''));
+    step.appendChild(tip);
+    steps.appendChild(step);
+  }
+  block.appendChild(steps);
+
+  // Readout under bars: 8-column grid listing each step (01-16) and its
+  // value. More readable than per-bar labels because each cell has 2× the
+  // horizontal space. OSC BOT shows notes (cyan), others show numbers.
+  const nums = el('div', 'seq-numbers' + (isOscBot ? ' notes' : ''));
+  for (let i = 0; i < 16; i++) {
+    const beyond = i >= numSteps;
+    const v = stepVals[i] || 0;
+    const cell = el('div', 'cell' + (beyond ? ' beyond' : ''));
+    cell.appendChild(el('span', 'n', String(i+1).padStart(2,'0')));
+    cell.appendChild(el('span', 'v', fmtStepVal(v)));
+    nums.appendChild(cell);
+  }
+  block.appendChild(nums);
+
+  return block;
+}
+
+// Render a single FX slot column. Includes a dropdown so the user can preview
+// any FX type's parameters (the active assignment is highlighted).
+function renderFXSlot(root, fxKind, bankLetter, slotLetter) {
+  const slotName = bankLetter + slotLetter;
+  const slotEl = root.querySelector(':scope > ' + slotName);
+  if (!slotEl) return null;
+
+  const slotParams = sectionParams(slotEl);
+  const slotSW = slotParams[0] && slotParams[0].val === '1';
+  const activeTypeIdx = slotParams[2] ? parseInt(slotParams[2].val, 10) : 0;
+
+  // Track-only FX types (BEAT SCATTER/REPEAT/SHIFT, VINYL FLICK) are
+  // restricted to Track FX SLOT A — within ANY bank (A, B, C, or D), only
+  // the first slot can host them. Slots B, C, D of any track bank cannot.
+  // Input FX never allows them in any slot.
+  const allowTrackOnly = (fxKind === 'track' && slotLetter === 'A');
+
+  const card = el('div', 'fx-slot' + (slotSW ? ' on' : ''));
+
+  // Head: slot letter + on/off badge
+  const head = el('div', 'fx-slot-head');
+  head.appendChild(el('div', 'slot-id', bankLetter + slotLetter));
+  head.appendChild(el('div', 'state', slotSW ? 'ON' : 'OFF'));
+  card.appendChild(head);
+
+  // FX type selector (dropdown). Uses the device's MENU order (LPF, BPF, ...,
+  // TE1, TE2, GD, ..., GR, RR, Beat Scatter, ...) — not the file's storage
+  // order — so it matches what users see when scrolling through FX on the
+  // device. Under the hood we translate to/from the file's type index.
+  const displayList = getDisplayList(fxKind, slotLetter);
+  const activeDisplayIdx = fileIdxToDisplayIdx(activeTypeIdx, fxKind);
+
+  const select = document.createElement('select');
+  select.className = 'fx-type-select';
+  displayList.forEach((name, dispIdx) => {
+    const opt = document.createElement('option');
+    opt.value = dispIdx;  // dropdown value is the DISPLAY idx
+    opt.textContent = (dispIdx === activeDisplayIdx ? '● ' : '  ') + name;
+    if (dispIdx === activeDisplayIdx) opt.selected = true;
+    select.appendChild(opt);
+  });
+  card.appendChild(select);
+
+  // Slot metadata: SW mode + insert target
+  const insertEnum = fxKind === 'input' ? ENUMS.FX_INSERT_INPUT : ENUMS.FX_INSERT_TRACK;
+  const swModeVal = slotParams[1] ? ENUMS.FX_SW_MODE[parseInt(slotParams[1].val,10)] : '?';
+  const insertVal = slotParams[3] ? (insertEnum[parseInt(slotParams[3].val,10)] || ('?' + slotParams[3].val)) : '?';
+  const meta = el('div', 'fx-slot-meta');
+  meta.appendChild(el('div', null, 'SW MODE: ', el('span', 'v', swModeVal)));
+  meta.appendChild(el('div', null, 'INSERT: ', el('span', 'v', insertVal)));
+  card.appendChild(meta);
+
+  // Params container — re-rendered when dropdown changes
+  const paramsBox = el('div');
+  card.appendChild(paramsBox);
+
+  function showType(typeIdx) {
+    paramsBox.innerHTML = '';
+    if (typeIdx !== activeTypeIdx) {
+      const notice = el('div', 'fx-preview-notice',
+        'Previewing — not assigned to slot');
+      paramsBox.appendChild(notice);
+    }
+    const rendered = renderFXTypeParams(root, slotName, typeIdx, fxKind);
+    if (rendered) {
+      paramsBox.appendChild(rendered);
+    } else {
+      const none = el('div');
+      none.style.fontSize = '10px';
+      none.style.color = 'var(--text-mute)';
+      none.style.fontStyle = 'italic';
+      none.style.padding = '8px 0';
+      none.textContent = '(no parameters stored for this type)';
+      paramsBox.appendChild(none);
+    }
+    // Optional sequencer block (only some FX types have one)
+    const seq = renderSeq(root, slotName, typeIdx, fxKind);
+    if (seq) paramsBox.appendChild(seq);
+  }
+
+  select.addEventListener('change', () => {
+    const dispIdx = parseInt(select.value, 10);
+    const fileIdx = displayIdxToFileIdx(dispIdx, fxKind);
+    showType(fileIdx);
+  });
+  showType(activeTypeIdx);
+
+  return card;
+}
+
+// Render a whole bank (4 slots side-by-side as columns). Returns null if
+// the bank container doesn't exist.
+function renderFXBankContent(root, fxKind, bankLetter) {
+  const bankEl = root.querySelector(':scope > ' + bankLetter);
+  if (!bankEl) return null;
+
+  const wrap = el('div');
+
+  // Bank-level metadata strip
+  const bankParams = sectionParams(bankEl);
+  const isOn = bankParams[0] && bankParams[0].val === '1';
+  const modeStr = (bankParams[1] && ENUMS.FX_MODE[parseInt(bankParams[1].val,10)]) || '?';
+  const targetStr = bankParams[2] ? String.fromCharCode(65 + parseInt(bankParams[2].val, 10)) : '?';
+
+  const metaStrip = el('div', 'bank-meta');
+  metaStrip.style.marginBottom = '14px';
+  metaStrip.appendChild(document.createTextNode('Bank state:'));
+  metaStrip.appendChild(el('span', 'pill ' + (isOn ? 'on' : ''), isOn ? 'ON' : 'OFF'));
+  metaStrip.appendChild(el('span', 'pill', 'MODE ' + modeStr));
+  metaStrip.appendChild(el('span', 'pill', 'TARGET ' + targetStr));
+  wrap.appendChild(metaStrip);
+
+  // 4 slot columns
+  const cols = el('div', 'fx-columns');
+  for (const slotLetter of ['A','B','C','D']) {
+    const slot = renderFXSlot(root, fxKind, bankLetter, slotLetter);
+    if (slot) cols.appendChild(slot);
+  }
+  wrap.appendChild(cols);
+
+  return wrap;
+}
+
+function renderFXTab(ctx, fxKind) {
+  const wrap = el('div', 'fx-section');
+  wrap.appendChild(legend());
+
+  const root = fxKind === 'input' ? ctx.ifx : ctx.tfx;
+  if (!root) {
+    wrap.appendChild(el('div', 'empty', 'No FX data found'));
+    return wrap;
+  }
+
+  // Bank selector tabs
+  const banks = ['A','B','C','D'];
+  const bankTabs = el('div', 'bank-tabs');
+  bankTabs.appendChild(el('div', 'label', 'Bank'));
+
+  const content = el('div');
+
+  // Track which bank is on so we can show indicator dots
+  const bankStates = {};
+  for (const letter of banks) {
+    const bankEl = root.querySelector(':scope > ' + letter);
+    if (bankEl) {
+      const p = sectionParams(bankEl);
+      bankStates[letter] = p[0] && p[0].val === '1';
+    }
+  }
+
+  let activeBank = null;
+  const buttons = {};
+
+  function setActive(letter) {
+    if (activeBank === letter) return;
+    activeBank = letter;
+    for (const [l, btn] of Object.entries(buttons)) {
+      btn.classList.toggle('active', l === letter);
+    }
+    content.innerHTML = '';
+    const rendered = renderFXBankContent(root, fxKind, letter);
+    if (rendered) content.appendChild(rendered);
+    else content.appendChild(el('div', 'empty', 'No Bank ' + letter + ' data'));
+  }
+
+  for (const letter of banks) {
+    const btn = el('button', 'bank-btn' + (bankStates[letter] ? ' bank-on' : ''), letter);
+    btn.appendChild(el('span', 'dot'));
+    btn.addEventListener('click', () => setActive(letter));
+    buttons[letter] = btn;
+    bankTabs.appendChild(btn);
+  }
+
+  // Helper text on the right of the bank row
+  const help = el('div', 'bank-meta');
+  help.style.marginLeft = 'auto';
+  help.appendChild(document.createTextNode('Amber dot = bank is ON · Click an FX type dropdown to preview any effect'));
+  bankTabs.appendChild(help);
+
+  wrap.appendChild(bankTabs);
+  wrap.appendChild(content);
+  setActive('A');
+
+  return wrap;
+}
+
+function renderSystemTab(mem) {
+  const wrap = el('div');
+  wrap.appendChild(legend());
+  const grid = el('div', 'tracks-grid');
+
+  const sections = [
+    {name: 'INPUT', map: SECTION_MAPS.INPUT, label: 'Input Setup'},
+    {name: 'OUTPUT', map: SECTION_MAPS.OUTPUT, label: 'Output Setup'},
+    {name: 'ROUTING', map: SECTION_MAPS.ROUTING, label: 'Routing'},
+    {name: 'MIXER', map: SECTION_MAPS.MIXER, label: 'Mixer'},
+    {name: 'MASTER_FX', map: SECTION_MAPS.MASTER_FX, label: 'Master FX'},
+    {name: 'SETUP', map: SECTION_MAPS.SETUP, label: 'Setup'},
+  ];
+
+  for (const s of sections) {
+    const sec = findSection(mem, s.name);
+    if (!sec) continue;
+    const card = el('div', 'track-card');
+    card.appendChild(el('h3', null, el('span', null, s.label)));
+    const params = sectionParams(sec);
+    const paramsEl = renderParams(params, s.map);
+    const rawEl = renderRawDump(params);
+    withRawToggle(card, paramsEl, rawEl);
+    grid.appendChild(card);
+  }
+
+  // EQs — render with prettier names
+  const eqLabels = {
+    EQ_MIC1:      'EQ · MIC 1',
+    EQ_MIC2:      'EQ · MIC 2',
+    EQ_INST1L:    'EQ · INST 1 (L)',
+    EQ_INST1R:    'EQ · INST 1 (R)',
+    EQ_INST2L:    'EQ · INST 2 (L)',
+    EQ_INST2R:    'EQ · INST 2 (R)',
+    EQ_MAINOUTL:  'EQ · MAIN OUT (L)',
+    EQ_MAINOUTR:  'EQ · MAIN OUT (R)',
+    EQ_SUBOUT1L:  'EQ · SUB OUT 1 (L)',
+    EQ_SUBOUT1R:  'EQ · SUB OUT 1 (R)',
+    EQ_SUBOUT2L:  'EQ · SUB OUT 2 (L)',
+    EQ_SUBOUT2R:  'EQ · SUB OUT 2 (R)',
+  };
+  for (const en of Object.keys(eqLabels)) {
+    const sec = findSection(mem, en);
+    if (!sec) continue;
+    const card = el('div', 'track-card');
+    card.appendChild(el('h3', null, el('span', null, eqLabels[en])));
+    const params = sectionParams(sec);
+    const paramsEl = renderParams(params, SECTION_MAPS.EQ);
+    const rawEl = renderRawDump(params);
+    withRawToggle(card, paramsEl, rawEl);
+    grid.appendChild(card);
+  }
+
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function renderAssignsTab(mem) {
+  const wrap = el('div');
+  wrap.appendChild(legend());
+  const grid = el('div', 'assigns-grid');
+
+  for (let i = 1; i <= 16; i++) {
+    const sec = findSection(mem, 'ASSIGN' + i);
+    if (!sec) continue;
+    const params = sectionParams(sec);
+    const sw = params[0] && params[0].val === '1';
+    const card = el('div', 'assign-card' + (sw ? '' : ' disabled'));
+    const head = el('h4');
+    head.appendChild(el('span', null, 'Assign ' + i));
+    head.appendChild(el('span', 'state ' + (sw ? 'on' : ''), sw ? 'ENABLED' : 'OFF'));
+    card.appendChild(head);
+    const paramsEl = renderParams(params, SECTION_MAPS.ASSIGN);
+    const rawEl = renderRawDump(params);
+    withRawToggle(card, paramsEl, rawEl);
+    grid.appendChild(card);
+  }
+
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function renderControlsTab(mem) {
+  const wrap = el('div');
+  wrap.appendChild(legend());
+  const grid = el('div', 'assigns-grid');
+
+  const names = ['ECTL_CTL1','ECTL_CTL2','ECTL_CTL3','ECTL_CTL4','ECTL_EXP1','ECTL_EXP2'];
+  for (const n of names) {
+    const sec = findSection(mem, n);
+    if (!sec) continue;
+    const card = el('div', 'assign-card');
+    card.appendChild(el('h4', null, el('span', null, n.replace('ECTL_',''))));
+    const params = sectionParams(sec);
+    const paramsEl = renderParams(params, SECTION_MAPS.ECTL);
+    const rawEl = renderRawDump(params);
+    withRawToggle(card, paramsEl, rawEl);
+    grid.appendChild(card);
+  }
+
+  // Panel-button assignments (ICTL1_TRACK1_FX, etc.) - lump them together
+  const panel = el('div');
+  panel.style.gridColumn = '1 / -1';
+  panel.style.marginTop = '12px';
+  panel.appendChild(el('h3', null,
+    el('span', null, 'Panel button assignments'),
+    el('span', 'num', 'ICTL*')
+  ));
+  panel.firstChild.style.fontFamily = "'Archivo', sans-serif";
+  panel.firstChild.style.fontWeight = '900';
+  panel.firstChild.style.fontSize = '15px';
+  panel.firstChild.style.borderBottom = '1px solid var(--border)';
+  panel.firstChild.style.paddingBottom = '6px';
+  panel.firstChild.style.marginBottom = '12px';
+
+  const panelGrid = el('div', 'assigns-grid');
+  const panelSections = [];
+  for (const c of mem.children) {
+    if (/^ICTL\d_(TRACK\d_(FX|TRACK)|PEDAL\d)$/.test(c.tagName)) {
+      panelSections.push(c);
+    }
+  }
+  for (const sec of panelSections) {
+    const card = el('div', 'assign-card');
+    card.appendChild(el('h4', null, el('span', null, sec.tagName)));
+    card.appendChild(renderRawDump(sectionParams(sec)));
+    panelGrid.appendChild(card);
+  }
+  panel.appendChild(panelGrid);
+  grid.appendChild(panel);
+
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function renderRawTab(ctx) {
+  const wrap = el('div');
+  const note = el('p');
+  note.style.color = 'var(--text-mute)';
+  note.style.fontSize = '11px';
+  note.textContent = 'Every direct child of <mem>, <ifx>, and <tfx> with the raw tag=value pairs. Useful for diffing two files.';
+  wrap.appendChild(note);
+
+  const sections = [
+    {label: '<mem> — memory params', root: ctx.mem},
+    {label: '<ifx> — input FX tree',  root: ctx.ifx},
+    {label: '<tfx> — track FX tree',  root: ctx.tfx},
+  ];
+
+  for (const s of sections) {
+    if (!s.root) continue;
+    const h = el('h3', null, el('span', null, s.label));
+    h.style.fontFamily = "'Archivo', sans-serif";
+    h.style.fontWeight = '900';
+    h.style.fontSize = '15px';
+    h.style.borderBottom = '2px solid var(--red)';
+    h.style.paddingBottom = '6px';
+    h.style.margin = '20px 0 12px';
+    wrap.appendChild(h);
+
+    const grid = el('div', 'tracks-grid');
+    for (const c of s.root.children) {
+      const params = sectionParams(c);
+      if (params.length === 0) continue;
+      const card = el('div', 'track-card');
+      card.appendChild(el('h3', null,
+        el('span', null, c.tagName),
+        el('span', 'badge', params.length + ' fields')
+      ));
+      card.appendChild(renderRawDump(params));
+      grid.appendChild(card);
+    }
+    wrap.appendChild(grid);
+  }
+  return wrap;
+}
+
+// ============================================================================
+// Legend / mini help
+// ============================================================================
+
+function legend() {
+  const l = el('div', 'legend');
+  l.appendChild(el('span', 'confident', 'Confident mapping'));
+  l.appendChild(el('span', 'uncert', 'Uncertain (PDF order guessed)'));
+  l.appendChild(el('span', 'raw', 'Internal / unmapped'));
+  return l;
+}
+
+// ============================================================================
+// Top-level render
+// ============================================================================
+
+function render(ctx) {
+  const mem = ctx.mem;
+  const root = document.getElementById('result');
+  root.innerHTML = '';
+  root.style.display = '';
+
+  // Header LCD
+  const memId = mem.getAttribute('id');
+  const name = decodeName(findSection(mem, 'NAME'));
+  const master = findSection(mem, 'MASTER');
+  let tempoStr = '—';
+  if (master && master.children[0]) {
+    const t = parseInt(master.children[0].textContent, 10);
+    tempoStr = (t / 10).toFixed(1);
+  }
+
+  const lcd = el('div', 'lcd');
+  const memNo = String((parseInt(memId, 10) || 0) + 1).padStart(2, '0');
+  lcd.appendChild(el('div', 'memno', memNo));
+  const info = el('div', 'meminfo');
+  info.appendChild(el('div', 'name', name));
+  info.appendChild(el('div', 'meta', `Memory slot ${memNo} · mem id ${memId}`));
+  lcd.appendChild(info);
+  const tempoBox = el('div', 'tempo');
+  tempoBox.appendChild(el('div', 'val', '♩=' + tempoStr));
+  tempoBox.appendChild(el('div', 'label', 'BPM'));
+  lcd.appendChild(tempoBox);
+  root.appendChild(lcd);
+
+  // Tabs
+  const tabs = [
+    { id: 'tracks', label: 'Tracks', render: () => renderTracksTab(mem) },
+    { id: 'recplay', label: 'Rec / Play', render: () => renderRecPlayTab(mem) },
+    { id: 'rhythm', label: 'Rhythm', render: () => renderRhythmTab(mem) },
+    { id: 'inputfx', label: 'Input FX', render: () => renderFXTab(ctx, 'input') },
+    { id: 'trackfx', label: 'Track FX', render: () => renderFXTab(ctx, 'track') },
+    { id: 'system', label: 'System / EQ', render: () => renderSystemTab(mem) },
+    { id: 'assigns', label: 'Assigns', render: () => renderAssignsTab(mem) },
+    { id: 'controls', label: 'Controls', render: () => renderControlsTab(mem) },
+    { id: 'raw', label: 'Raw XML', render: () => renderRawTab(ctx) },
+  ];
+
+  const tabBar = el('div', 'tabs');
+  const panel = el('div', 'panel');
+  let current = null;
+
+  const setActive = (tab) => {
+    if (current === tab) return;
+    current = tab;
+    [...tabBar.children].forEach(c => c.classList.toggle('active', c._tab === tab));
+    panel.innerHTML = '';
+    panel.appendChild(tab.render());
+  };
+
+  tabs.forEach(tab => {
+    const btn = el('button', 'tab', tab.label);
+    btn._tab = tab;
+    btn.addEventListener('click', () => setActive(tab));
+    tabBar.appendChild(btn);
+  });
+
+  root.appendChild(tabBar);
+  root.appendChild(panel);
+  setActive(tabs[0]);
+
+  // LEDs
+  document.getElementById('led-loaded').classList.add('on');
+}
+
+// ============================================================================
+// File loading
+// ============================================================================
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const ctx = parseRC0(e.target.result);
+      render(ctx);
+      window.scrollTo({ top: document.getElementById('result').offsetTop - 20, behavior: 'smooth' });
+    } catch (err) {
+      alert('Could not parse file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const browseBtn = document.getElementById('browse-btn');
+
+drop.addEventListener('click', (e) => {
+  if (e.target.tagName === 'BUTTON') return;
+  fileInput.click();
+});
+browseBtn.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) loadFile(fileInput.files[0]);
+});
+drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+drop.addEventListener('drop', (e) => {
+  e.preventDefault();
+  drop.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+document.getElementById('led-ready').classList.add('on');
+</script>
+
+</body>
+</html>
