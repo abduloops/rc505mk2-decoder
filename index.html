@@ -172,6 +172,9 @@
     color: rgba(232,168,35,0.55); font-size: 10px;
     text-transform: uppercase; letter-spacing: 0.2em; margin-top: 6px;
   }
+  .lcd .meminfo .meta-dim {
+    color: rgba(232,168,35,0.35); margin-top: 2px;
+  }
   .lcd .tempo {
     text-align: right;
     color: var(--amber);
@@ -191,6 +194,7 @@
     display: flex; gap: 0; margin-bottom: 0;
     border-bottom: 1px solid var(--border);
     overflow-x: auto;
+    overflow-y: hidden;
   }
   .tab {
     background: transparent; color: var(--text-dim);
@@ -680,6 +684,29 @@
     text-transform: none; letter-spacing: 0;
     font-style: italic;
   }
+  footer .credits {
+    margin-top: 14px;
+    color: var(--text-mute);
+    text-transform: none; letter-spacing: 0.02em;
+    font-size: 11px;
+  }
+  footer .credits a {
+    color: var(--amber); text-decoration: none;
+    border-bottom: 1px dotted rgba(232,168,35,0.3);
+    transition: border-color 0.12s, color 0.12s;
+  }
+  footer .credits a:hover {
+    color: var(--amber);
+    border-bottom-color: rgba(232,168,35,0.9);
+  }
+  footer .credits-aside {
+    display: block;
+    margin-top: 4px;
+    font-size: 10px;
+    color: var(--text-mute);
+    opacity: 0.7;
+    font-style: italic;
+  }
 
   .empty {
     color: var(--text-mute); text-align: center; padding: 40px;
@@ -702,6 +729,105 @@
   /* Mark uncertain key with subtle indicator */
   .params .k.uncertain::after {
     content: '?'; color: var(--uncertain); margin-left: 4px;
+  }
+
+  /* ===== A/B pair banner ===== */
+  .pair-banner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 10px 16px; margin-bottom: 12px;
+    background: rgba(232,168,35,0.08);
+    border: 1px solid rgba(232,168,35,0.3);
+    border-radius: 6px;
+    font-size: 12px;
+    color: rgba(232,168,35,0.85);
+    letter-spacing: 0.04em;
+  }
+  .pair-banner-label { flex: 1; }
+  .pair-banner-btn {
+    background: transparent;
+    border: 1px solid rgba(232,168,35,0.5);
+    color: rgba(232,168,35,0.95);
+    padding: 6px 12px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.06em;
+    text-transform: uppercase; cursor: pointer;
+    font-family: inherit;
+  }
+  .pair-banner-btn:hover {
+    background: rgba(232,168,35,0.15);
+    border-color: rgba(232,168,35,0.8);
+  }
+
+  /* ===== Bottom-right toast ===== */
+  .toast {
+    position: fixed; bottom: 20px; right: 20px; z-index: 1000;
+    max-width: 340px;
+    background: #1a1810;
+    border: 1px solid rgba(232,168,35,0.4);
+    border-radius: 6px;
+    padding: 12px 38px 12px 16px;
+    color: rgba(232,168,35,0.9);
+    font-size: 13px; line-height: 1.4;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    opacity: 0; transform: translateY(10px); pointer-events: none;
+    transition: opacity 200ms ease, transform 200ms ease;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .toast-text { padding-right: 4px; }
+  .toast-close {
+    position: absolute; top: 4px; right: 6px;
+    background: transparent; border: none;
+    color: rgba(232,168,35,0.6);
+    font-size: 18px; line-height: 1; cursor: pointer;
+    padding: 4px 8px;
+    font-family: inherit;
+  }
+  /* ===== Memory switcher button + dropdown ===== */
+  .mem-switch-btn {
+    margin-top: 8px;
+    background: rgba(232,168,35,0.12);
+    border: 1px solid rgba(232,168,35,0.45);
+    color: rgba(232,168,35,0.95);
+    padding: 5px 10px; border-radius: 4px;
+    font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; cursor: pointer;
+    font-family: inherit;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  .mem-switch-btn:hover {
+    background: rgba(232,168,35,0.22);
+    border-color: rgba(232,168,35,0.8);
+  }
+  .mem-switcher-menu {
+    background: #1a1810;
+    border: 1px solid rgba(232,168,35,0.4);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    min-width: 220px; max-width: 320px;
+    max-height: 400px; overflow-y: auto;
+    z-index: 500;
+    padding: 4px 0;
+  }
+  .mem-switcher-row {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 8px 12px;
+    background: transparent; border: none;
+    color: rgba(232,168,35,0.85);
+    font-family: inherit; font-size: 12px;
+    text-align: left; cursor: pointer;
+  }
+  .mem-switcher-row:hover { background: rgba(232,168,35,0.1); }
+  .mem-switcher-row.active {
+    background: rgba(232,168,35,0.18);
+    color: rgba(232,168,35,1);
+  }
+  .mem-switcher-no {
+    font-weight: 700; min-width: 24px;
+    color: rgba(232,168,35,1);
+  }
+  .mem-switcher-name { flex: 1; }
+  .mem-switcher-meta {
+    font-size: 9px; letter-spacing: 0.15em;
+    color: rgba(232,168,35,0.5);
   }
 </style>
 </head>
@@ -736,6 +862,14 @@
   <div class="disclaimer">
     Best-effort labelling. Params marked with "?" are inferred from PDF order and may be wrong.
     Toggle the "Show raw values" checkbox on any section to see the unmapped XML tag data.
+  </div>
+  <div class="credits">
+    Reverse engineered by Abdu Loops
+    (<a href="https://github.com/abduloops" target="_blank" rel="noopener">github</a>
+    · <a href="https://instagram.com/abdu_loops" target="_blank" rel="noopener">insta</a>
+    · <a href="https://youtube.com/@AbduLoops" target="_blank" rel="noopener">youtube</a>)
+    · Coded by Claude AI
+    <span class="credits-aside">(yeahhh code lowk ai, but my work aint sigma respect button)</span>
   </div>
 </footer>
 
@@ -1638,8 +1772,27 @@ const SECTION_MAPS = {
     }},
     20:{p:'Tempo', fmt:v=>(v/10).toFixed(1) + ' BPM'},
     21:{p:'Length', fmt:v=>v + ' samples'},
-    22:{p:'(internal)'},
-    23:{p:'(internal)'},
+    22:{p:'Saved WAV', e:ENUMS.OFF_ON, fmt:v => v===0?'NO':(v===1?'YES':String(v))},   // W - VERIFIED: audio recorded flag
+    23:{p:'Audio Length', fmt:(v, opts) => {
+        if (v === 0) return '— (no audio)';
+        const secs = v / 44100;
+        let measLabel = '';
+        // opts.mem (if passed) lets us calculate measure count
+        if (opts && opts.mem) {
+          const master = findSection(opts.mem, 'MASTER');
+          if (master && master.children[0] && master.children[1]) {
+            const loopLen = parseInt(master.children[1].textContent, 10);
+            if (loopLen > 0) {
+              const measures = v / loopLen;
+              const measStr = (Math.abs(measures - Math.round(measures)) < 0.01)
+                ? String(Math.round(measures))
+                : measures.toFixed(2);
+              measLabel = measStr + ' meas / ';
+            }
+          }
+        }
+        return measLabel + secs.toFixed(2) + 's (' + v + ' samples)';
+    }},                                                   // X - VERIFIED: recorded audio length in samples @ 44.1kHz
     // Position 24 (Y) is Loop Sync Mode, verified by mode-change test:
     // 0=Immediate, 1=Measure, 2=Loop Length (default).
     24:{p:'Loop Sync Mode', e:ENUMS.LOOP_SYNC_MODE},
@@ -1852,13 +2005,20 @@ function parseRC0(text) {
   //   1) Single-char tag names like <0>..<9> and <#> aren't valid XML names.
   //      We rewrite them: <0>..<9> → <_0>..<_9>,  <#> → <_h>
   //   2) After </database> there's a trailing <count>NNNN</count> element
-  //      (a backup version counter). We strip it because it's outside the
-  //      document root and DOMParser rejects it.
+  //      (a backup version counter). We capture it before stripping because
+  //      DOMParser rejects content outside the root, but we want the value
+  //      for the save-count display and A/B pair detection.
   let fixed = text
     .replace(/<(\/?)([0-9])>/g, '<$1_$2>')
     .replace(/<(\/?)#>/g, '<$1_h>');
 
-  // strip trailing <count>...</count> after </database>
+  // capture trailing <count>...</count> as hex, then strip it
+  let saveCount = null;
+  const countMatch = fixed.match(/<\/database>\s*<count>([^<]*)<\/count>\s*$/);
+  if (countMatch) {
+    const hex = countMatch[1].trim();
+    if (/^[0-9A-Fa-f]+$/.test(hex)) saveCount = parseInt(hex, 16);
+  }
   fixed = fixed.replace(/<\/database>\s*<count>[^<]*<\/count>\s*$/, '</database>');
 
   const parser = new DOMParser();
@@ -1877,6 +2037,7 @@ function parseRC0(text) {
     ifx: database.querySelector(':scope > ifx'),
     tfx: database.querySelector(':scope > tfx'),
     database,
+    saveCount,
   };
 }
 
@@ -1954,7 +2115,7 @@ function renderParams(params, map, opts = {}) {
       if (display === 'ON') vCls += ' on';
       else if (display === 'OFF') vCls += ' off';
     } else if (m.fmt) {
-      try { display = m.fmt(num); } catch (e) { display = p.val; }
+      try { display = m.fmt(num, opts); } catch (e) { display = p.val; }
     }
     if (isUncertain) vCls += ' uncertain';
     if (String(display).length > 12) vCls += ' long';
@@ -2011,7 +2172,7 @@ function renderTracksTab(mem) {
     head.appendChild(el('span', 'badge', `${params.length} fields`));
     card.appendChild(head);
 
-    const paramsEl = renderParams(params, SECTION_MAPS.TRACK);
+    const paramsEl = renderParams(params, SECTION_MAPS.TRACK, { mem });
     const rawEl = renderRawDump(params);
     withRawToggle(card, paramsEl, rawEl);
 
@@ -2046,7 +2207,7 @@ function renderTracksTab(mem) {
     note.textContent = 'Not documented in the user manual (which lists tracks 1–5 only). May be reserved or used for rhythm internally.';
     card.appendChild(note);
     const params = sectionParams(t6);
-    const paramsEl = renderParams(params, SECTION_MAPS.TRACK);
+    const paramsEl = renderParams(params, SECTION_MAPS.TRACK, { mem });
     const rawEl = renderRawDump(params);
     withRawToggle(card, paramsEl, rawEl);
     auxGrid.appendChild(card);
@@ -2738,7 +2899,7 @@ function legend() {
 // Top-level render
 // ============================================================================
 
-function render(ctx) {
+function render(ctx, preferredTabId) {
   const mem = ctx.mem;
   const root = document.getElementById('result');
   root.innerHTML = '';
@@ -2760,10 +2921,23 @@ function render(ctx) {
   const info = el('div', 'meminfo');
   info.appendChild(el('div', 'name', name));
   info.appendChild(el('div', 'meta', `Memory slot ${memNo} · mem id ${memId}`));
+  if (ctx.saveCount != null) {
+    info.appendChild(el('div', 'meta meta-dim', `Save #${ctx.saveCount}`));
+  }
   lcd.appendChild(info);
   const tempoBox = el('div', 'tempo');
   tempoBox.appendChild(el('div', 'val', '♩=' + tempoStr));
   tempoBox.appendChild(el('div', 'label', 'BPM'));
+  // Memory switcher button — shows only if 2+ distinct memories are loaded.
+  // (A/B pairs count as 1 memory since the pair banner already handles them.)
+  if (loadedPairs.size >= 2) {
+    const switchBtn = el('button', 'mem-switch-btn', 'Switch memory ▾');
+    switchBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openMemorySwitcher(switchBtn);
+    });
+    tempoBox.appendChild(switchBtn);
+  }
   lcd.appendChild(tempoBox);
   root.appendChild(lcd);
 
@@ -2787,6 +2961,7 @@ function render(ctx) {
   const setActive = (tab) => {
     if (current === tab) return;
     current = tab;
+    activeTabId = tab.id;
     [...tabBar.children].forEach(c => c.classList.toggle('active', c._tab === tab));
     panel.innerHTML = '';
     panel.appendChild(tab.render());
@@ -2801,28 +2976,284 @@ function render(ctx) {
 
   root.appendChild(tabBar);
   root.appendChild(panel);
-  setActive(tabs[0]);
+  const initialTab = (preferredTabId && tabs.find(t => t.id === preferredTabId)) || tabs[0];
+  setActive(initialTab);
 
   // LEDs
   document.getElementById('led-loaded').classList.add('on');
 }
 
 // ============================================================================
-// File loading
+// File loading + A/B pair handling
 // ============================================================================
+
+// Soft cap on how many distinct memories we keep in state. The RC-505mk2
+// can have up to 99 × 2 = 198 .RC0 files in a backup, but anything beyond
+// ~20 makes the switcher unwieldy. If exceeded, oldest entries get dropped.
+const MEMORY_LIMIT = 20;
+
+// Holds the currently-loaded files (one per "memory pair").
+// Key: `${memId}|${nameDecoded}` so files that share a filename but contain
+// different memories don't get mis-paired. Value: { ctx, fileName }.
+const loadedPairs = new Map();
+// The currently-displayed ctx.
+let activeCtx = null;
+// The currently-active tab id, tracked so switching between A/B versions
+// of the same memory can preserve which tab the user was looking at.
+let activeTabId = null;
+
+// Open a small popup menu listing all loaded memories. The user clicks one
+// to switch to it. Pair partners are picked automatically (newer one shown).
+function openMemorySwitcher(anchor) {
+  // Remove any existing menu
+  const existing = document.getElementById('mem-switcher-menu');
+  if (existing) { existing.remove(); return; }
+
+  const menu = document.createElement('div');
+  menu.id = 'mem-switcher-menu';
+  menu.className = 'mem-switcher-menu';
+
+  // Build entries from loadedPairs, sorted by memory slot number ascending
+  // (slot number = memId + 1, so sorting by memId is equivalent). Within
+  // each pair the newer-save wins.
+  const sortedEntries = [...loadedPairs.entries()]
+    .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10));
+
+  for (const [key, entries] of sortedEntries) {
+    const newest = entries.reduce((a, b) =>
+      (a.ctx.saveCount ?? 0) >= (b.ctx.saveCount ?? 0) ? a : b
+    );
+    const c = newest.ctx;
+    const isActive = c === activeCtx;
+    const memNo = String((parseInt(c.mem.getAttribute('id'), 10) || 0) + 1).padStart(2, '0');
+    const nm = decodeName(findSection(c.mem, 'NAME'));
+
+    const row = document.createElement('button');
+    row.className = 'mem-switcher-row' + (isActive ? ' active' : '');
+    row.innerHTML = `
+      <span class="mem-switcher-no">${memNo}</span>
+      <span class="mem-switcher-name">${nm}</span>
+      <span class="mem-switcher-meta">${entries.length > 1 ? 'A+B' : ''}</span>
+    `;
+    row.addEventListener('click', () => {
+      setActiveCtx(c);
+      menu.remove();
+    });
+    menu.appendChild(row);
+  }
+
+  // Position below the anchor button
+  const rect = anchor.getBoundingClientRect();
+  menu.style.position = 'absolute';
+  menu.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+  menu.style.right = (window.innerWidth - rect.right) + 'px';
+  document.body.appendChild(menu);
+
+  // Click outside to close
+  setTimeout(() => {
+    document.addEventListener('click', function onDocClick(e) {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener('click', onDocClick);
+      }
+    });
+  }, 0);
+}
+
+// Detect if an FX bank slot matches the device's default for that slot.
+// Defaults verified from fresh-reset memories:
+//   IFX bank A-D slots: A=LPF(0), B=G2B(9), C=PATTERN SLICER(33), D=DELAY(35)
+//   TFX bank A-D slots: A=BEAT SCATTER(49), B=FLANGER(4), C=TRANSPOSE(13), D=GRANULAR DELAY(40)
+// We skip bank A in the check since users put their primary effects there.
+// If banks B, C, AND D all match defaults, it's a strong "fresh memory" signal.
+const DEFAULT_IFX_TYPES = { A: 0, B: 9, C: 33, D: 35 };
+const DEFAULT_TFX_TYPES = { A: 49, B: 4, C: 13, D: 40 };
+
+function getSlotType(fxRoot, bank, slot) {
+  if (!fxRoot) return null;
+  const slotEl = fxRoot.querySelector(`:scope > ${bank}${slot}`);
+  if (!slotEl) return null;
+  const typeEl = slotEl.querySelector(':scope > C');
+  if (!typeEl) return null;
+  return parseInt(typeEl.textContent, 10);
+}
+
+function looksLikeFreshMemory(ctx) {
+  // Check banks B, C, D (skip A since that's where users normally edit).
+  for (const bank of ['B', 'C', 'D']) {
+    for (const slot of ['A', 'B', 'C', 'D']) {
+      const ifxType = getSlotType(ctx.ifx, bank, slot);
+      const tfxType = getSlotType(ctx.tfx, bank, slot);
+      if (ifxType !== DEFAULT_IFX_TYPES[slot]) return false;
+      if (tfxType !== DEFAULT_TFX_TYPES[slot]) return false;
+    }
+  }
+  return true;
+}
+
+// Show a transient toast in the bottom-right corner.
+let toastTimer = null;
+let toastShowTimer = null;
+function showToast(message, opts = {}) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = '';
+  const text = document.createElement('div');
+  text.className = 'toast-text';
+  text.textContent = message;
+  toast.appendChild(text);
+  const close = document.createElement('button');
+  close.className = 'toast-close';
+  close.setAttribute('aria-label', 'Dismiss');
+  close.textContent = '×';
+  close.addEventListener('click', () => toast.classList.remove('show'));
+  toast.appendChild(close);
+  toast.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  const duration = opts.duration ?? 6000;
+  toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+}
+function hideToast() {
+  if (toastShowTimer) { clearTimeout(toastShowTimer); toastShowTimer = null; }
+  if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+  const toast = document.getElementById('toast');
+  if (toast) toast.classList.remove('show');
+}
+
+// Render a banner above the result panel showing A/B pair info.
+function renderPairBanner(ctx, otherEntry) {
+  const root = document.getElementById('result');
+  // Remove existing banner if any
+  const existing = root.querySelector('.pair-banner');
+  if (existing) existing.remove();
+
+  const banner = el('div', 'pair-banner');
+  const isNewer = (ctx.saveCount ?? 0) > (otherEntry.ctx.saveCount ?? 0);
+  const label = el('span', 'pair-banner-label',
+    isNewer
+      ? `Showing ${ctx._fileName} (save #${ctx.saveCount}) — newer`
+      : `Showing ${ctx._fileName} (save #${ctx.saveCount}) — older`
+  );
+  const switchBtn = el('button', 'pair-banner-btn',
+    `Switch to ${otherEntry.fileName} (save #${otherEntry.ctx.saveCount})`);
+  switchBtn.addEventListener('click', () => {
+    // Preserve the current tab when toggling A/B (same memory)
+    setActiveCtx(otherEntry.ctx, activeTabId);
+  });
+  banner.appendChild(label);
+  banner.appendChild(switchBtn);
+  // Insert at top of result, before LCD
+  root.insertBefore(banner, root.firstChild);
+}
+
+function setActiveCtx(ctx, preferredTabId) {
+  activeCtx = ctx;
+  render(ctx, preferredTabId);
+  // Check for an A/B pair partner
+  const memId = ctx.mem.getAttribute('id');
+  const key = memId;
+  const entries = loadedPairs.get(key);
+  const hasPair = entries && entries.length >= 2;
+  if (hasPair) {
+    // Find the other one
+    const other = entries.find(e => e.ctx !== ctx);
+    if (other) renderPairBanner(ctx, other);
+    // If a "looks fresh" toast was queued or showing, kill it — having
+    // both A and B means the user already has the data they need.
+    hideToast();
+  }
+  // Show "looks fresh" toast if applicable, but only on first load (not switch),
+  // and only if we don't have a pair already (or won't have one in the next moment).
+  if (ctx._checkedFresh !== true) {
+    ctx._checkedFresh = true;
+    if (!hasPair && looksLikeFreshMemory(ctx)) {
+      // Defer briefly so a fast-arriving second file can cancel the toast
+      // before it shows. (e.g., user drags both A and B at once.)
+      if (toastShowTimer) clearTimeout(toastShowTimer);
+      toastShowTimer = setTimeout(() => {
+        // Re-check pair status at fire time, in case the pair arrived
+        // between the schedule and now.
+        const cur = loadedPairs.get(key);
+        if (cur && cur.length >= 2) return;
+        // Also skip if the user is no longer looking at this ctx — e.g. they
+        // dropped multiple unrelated memories and the active one is now a
+        // non-default memory. The toast would be misleading otherwise.
+        if (activeCtx !== ctx) return;
+        showToast(
+          'Loop data missing? This memory looks fresh — try uploading the other letter version (A or B).',
+          { duration: 8000 }
+        );
+      }, 400);
+    }
+  }
+}
 
 function loadFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
       const ctx = parseRC0(e.target.result);
-      render(ctx);
+      ctx._fileName = file.name;
+      // Track this file in loadedPairs keyed by memId. The name field is
+      // mutable on the device (one of A/B may have been renamed and saved
+      // while the other still shows the original default name), so pairing
+      // only on memId is the safe choice. memId is the slot number, which
+      // is unique per memory.
+      const memId = ctx.mem.getAttribute('id');
+      const key = memId;
+      let entries = loadedPairs.get(key);
+      const isNewMemory = !entries;
+      if (!entries) {
+        // Enforce soft cap: if at limit, drop the oldest entry (first key)
+        if (loadedPairs.size >= MEMORY_LIMIT) {
+          const oldestKey = loadedPairs.keys().next().value;
+          loadedPairs.delete(oldestKey);
+          showToast(
+            `Reached the ${MEMORY_LIMIT}-memory limit — dropping the oldest one to make room.`,
+            { duration: 5000 }
+          );
+        }
+        entries = [];
+        loadedPairs.set(key, entries);
+      }
+      // De-dupe by filename in case user drops the same file twice
+      const existing = entries.findIndex(e => e.fileName === file.name);
+      if (existing >= 0) entries[existing] = { ctx, fileName: file.name };
+      else entries.push({ ctx, fileName: file.name });
+
+      // If this is a pair (2 entries with same memId+name), pick the newer one
+      let toShow = ctx;
+      if (entries.length >= 2) {
+        const newest = entries.reduce((a, b) =>
+          (a.ctx.saveCount ?? 0) >= (b.ctx.saveCount ?? 0) ? a : b
+        );
+        toShow = newest.ctx;
+      }
+      setActiveCtx(toShow);
       window.scrollTo({ top: document.getElementById('result').offsetTop - 20, behavior: 'smooth' });
     } catch (err) {
       alert('Could not parse file: ' + err.message);
     }
   };
   reader.readAsText(file);
+}
+
+// Load multiple files (for drag-drop of multiple files at once).
+function loadFiles(files) {
+  // Hard cap on a single drop: warn if they're trying to drop way too many.
+  const arr = Array.from(files);
+  if (arr.length > MEMORY_LIMIT * 2) {
+    showToast(
+      `That's a lot of files (${arr.length}) — only loading the first ${MEMORY_LIMIT * 2}.`,
+      { duration: 5000 }
+    );
+  }
+  for (const f of arr.slice(0, MEMORY_LIMIT * 2)) loadFile(f);
 }
 
 const drop = document.getElementById('drop');
@@ -2835,14 +3266,14 @@ drop.addEventListener('click', (e) => {
 });
 browseBtn.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
 fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) loadFile(fileInput.files[0]);
+  if (fileInput.files.length) loadFiles(fileInput.files);
 });
 drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
 drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
 drop.addEventListener('drop', (e) => {
   e.preventDefault();
   drop.classList.remove('dragover');
-  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  if (e.dataTransfer.files.length) loadFiles(e.dataTransfer.files);
 });
 
 document.getElementById('led-ready').classList.add('on');
