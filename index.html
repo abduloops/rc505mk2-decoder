@@ -786,13 +786,15 @@ const ENUMS = {
   INST_GAIN: ['INST', 'LINE'],
 };
 
-// --- FX type list (49 input FX types, 53 track FX = input + 4 track-only) ---
-// Order is the device firmware's FX_TYPE storage index. Verified against
-// real memory files. NOTE: at indices 40/41, the firmware stores GRANULAR
-// DELAY first (40) then TAPE ECHO 2 (41), even though Boss's published
-// "FX Assign Values" reference table lists them the other way around.
-// FX type list — first 49 entries (0-48) are shared between Input FX and
-// Track FX. Beyond that, the lists diverge.
+// --- FX type list (file storage order, verified by device tests) ---
+// Order is the device firmware's FX_TYPE storage index. Indices 0-48 are
+// shared between Input FX and Track FX. Beyond that, the lists diverge.
+// IMPORTANT: The legacy MK1 effects (TAPE ECHO 2, ROLL 2) sit in the
+// "natural" delay/reverb region (39-43), while the MK2-native V505V2 versions
+// (TAPE ECHO 1, ROLL 1) were tacked onto the END of each list when MK2
+// firmware shipped. So in Input FX, file idx 49 = Tape Echo 1, 50 = Roll 1.
+// In Track FX, the track-only effects (Beat Scatter/Repeat/Shift, Vinyl Flick)
+// occupy 49-52, then Tape Echo 1 / Roll 1 at 53/54.
 const FX_TYPES_SHARED = [
   'LPF', 'BPF', 'HPF', 'PHASER', 'FLANGER', 'SYNTH', 'LO-FI', 'RADIO', 'RING MOD',
   'G2B', 'SUSTAINER', 'AUTO RIFF', 'SLOW GEAR', 'TRANSPOSE', 'PITCH BEND', 'ROBOT',
@@ -800,34 +802,34 @@ const FX_TYPES_SHARED = [
   'PREAMP', 'DIST', 'DYNAMICS', 'EQ', 'ISOLATOR', 'OCTAVE', 'AUTO PAN', 'MANUAL PAN',
   'STEREO ENHANCE', 'TREMOLO', 'VIBRATO', 'PATTERN SLICER', 'STEP SLICER', 'DELAY',
   'PANNING DELAY', 'REVERSE DELAY', 'MOD DELAY',
-  'TAPE ECHO 1',     // 39 (MK2-native)
-  'GRANULAR DELAY',  // 40
-  'TAPE ECHO 2',     // 41 (legacy MK1 import)
-  'WARP',            // 42
-  'TWIST',           // 43
-  'FREEZE',          // 44
-  'CHORUS',          // 45 (verified)
-  'REVERB',          // 46 (verified)
-  'ROLL 1',          // 47
-  'ROLL 2',          // 48
+  'TAPE ECHO 2',     // 39 (legacy MK1 import) — verified
+  'GRANULAR DELAY',  // 40 — verified
+  'WARP',            // 41 — verified
+  'TWIST',           // 42 — verified
+  'ROLL 2',          // 43 (legacy MK1 import) — verified
+  'FREEZE',          // 44 — verified
+  'CHORUS',          // 45 — verified
+  'REVERB',          // 46 — verified
+  'GATE REVERB',     // 47 — verified (both Input & Track FX)
+  'REVERSE REVERB',  // 48 — verified (both Input & Track FX)
 ];
 
-// Input FX has Gate Reverb / Reverse Reverb at indices 49-50.
-// (Track-only effects don't exist in Input FX context.)
+// Input FX: TAPE ECHO 1 and ROLL 1 (MK2-native V505V2) at indices 49-50.
+// (Track-only beat effects don't exist in Input FX context.)
 const FX_TYPES_INPUT = [...FX_TYPES_SHARED,
-  'GATE REVERB',     // 49 in Input FX
-  'REVERSE REVERB',  // 50 in Input FX
+  'TAPE ECHO 1',     // 49 in Input FX — verified
+  'ROLL 1',          // 50 in Input FX — verified
 ];
 
-// Track FX has the 4 track-only effects at 49-52, then Gate/Reverse Reverb
-// at 53-54. Verified: Track FX Bank A slot A default = type 49 = Beat Scatter.
+// Track FX: 4 track-only effects at 49-52, then Tape Echo 1 / Roll 1 at 53-54.
+// Verified: Track FX Bank A slot A default = type 49 = Beat Scatter.
 const FX_TYPES_TRACK = [...FX_TYPES_SHARED,
-  'BEAT SCATTER',    // 49 in Track FX
+  'BEAT SCATTER',    // 49 in Track FX — verified
   'BEAT REPEAT',     // 50
   'BEAT SHIFT',      // 51
   'VINYL FLICK',     // 52
-  'GATE REVERB',     // 53
-  'REVERSE REVERB',  // 54
+  'TAPE ECHO 1',     // 53 (MK2-native, V505V2)
+  'ROLL 1',          // 54 in Track FX — verified
 ];
 
 // Default reference used when context is unknown (e.g. raw view).
@@ -887,67 +889,106 @@ function getDisplayList(fxKind, slotLetter) {
 
 // Translation: display index → file (storage) index.
 // Maps the position in the device's menu to the actual type_idx stored in
-// the RC0 file. THIS IS PURELY FOR DROPDOWN VISUAL ORDERING — the file
-// storage mapping (FX_XML_ORDER_*) is the source of truth for what each
-// file idx means, and we never change that here.
+// the RC0 file. This is purely for the dropdown's visual ordering — the
+// FX_TYPES_INPUT / FX_TYPES_TRACK arrays above are the source of truth for
+// what each file idx means.
 //
-// Menu (display) | File (storage)
-//   39 TE1       |  39 TE1
-//   40 TE2       |  41 TE2
-//   41 GD        |  40 GD
-//   42 Warp      |  42 Warp
-//   43 Twist     |  43 Twist
-//   44 Roll 1    |  47 Roll 1
-//   45 Roll 2    |  48 Roll 2
-//   46 Freeze    |  44 Freeze
-//   47 Chorus    |  45 Chorus
-//   48 Reverb    |  46 Reverb
-//   49 GR        |  49 GR (input) | 53 GR (track)
-//   50 RR        |  50 RR (input) | 54 RR (track)
-//   51-54 beat-only (track only) | 49-52 in file
-const DISPLAY_TO_FILE_42_50 = {
-  42: 42, 43: 43,  // Warp, Twist
-  44: 47, 45: 48,  // Roll 1, Roll 2
-  46: 44, 47: 45, 48: 46,  // Freeze, Chorus, Reverb
+// Device menu order (display):     File storage order:
+//   39 Tape Echo 1                    39 Tape Echo 2
+//   40 Tape Echo 2                    40 Granular Delay
+//   41 Granular Delay                 41 Warp
+//   42 Warp                           42 Twist
+//   43 Twist                          43 Roll 2
+//   44 Roll 1                         44 Freeze
+//   45 Roll 2                         45 Chorus
+//   46 Freeze                         46 Reverb
+//   47 Chorus                         47 Gate Reverb
+//   48 Reverb                         48 Reverse Reverb
+//   49 Gate Reverb                    49 Tape Echo 1 (IFX) | Beat Scatter (TFX)
+//   50 Reverse Reverb                 50 Roll 1 (IFX)      | Beat Repeat (TFX)
+//   (track A only:)                   51 Beat Shift (TFX)
+//   51 Beat Scatter                   52 Vinyl Flick (TFX)
+//   52 Beat Repeat                    53 Tape Echo 1 (TFX)
+//   53 Beat Shift                     54 Roll 1 (TFX)
+//   54 Vinyl Flick
+
+// Shared mapping for display 39-48 (same in both Input and Track contexts).
+// Display idx → File idx
+const DISPLAY_TO_FILE_SHARED = {
+  39: 49,  // Tape Echo 1 menu → file (Input idx; Track context handled below)
+  40: 39,  // Tape Echo 2
+  41: 40,  // Granular Delay
+  42: 41,  // Warp
+  43: 42,  // Twist
+  44: 50,  // Roll 1 (Input idx; Track context handled below)
+  45: 43,  // Roll 2
+  46: 44,  // Freeze
+  47: 45,  // Chorus
+  48: 46,  // Reverb
 };
-const FILE_TO_DISPLAY_42_48 = {
-  42: 42, 43: 43,
-  47: 44, 48: 45,  // Roll 1, Roll 2 (file 47/48 → menu 44/45)
-  44: 46, 45: 47, 46: 48,  // Freeze, Chorus, Reverb
+
+// Reverse: file idx → display idx (Input FX context).
+// In Input FX: file 49 = Tape Echo 1 (menu 39), file 50 = Roll 1 (menu 44).
+const FILE_TO_DISPLAY_INPUT = {
+  39: 40,  // Tape Echo 2
+  40: 41,  // Granular Delay
+  41: 42,  // Warp
+  42: 43,  // Twist
+  43: 45,  // Roll 2
+  44: 46,  // Freeze
+  45: 47,  // Chorus
+  46: 48,  // Reverb
+  47: 49,  // Gate Reverb (file 47 → menu 49)
+  48: 50,  // Reverse Reverb (file 48 → menu 50)
+  49: 39,  // Tape Echo 1 (file 49 → menu 39)
+  50: 44,  // Roll 1 (file 50 → menu 44)
+};
+
+// Reverse: file idx → display idx (Track FX context).
+// In Track FX: file 49-52 = beat-only, file 53 = Tape Echo 1, file 54 = Roll 1.
+const FILE_TO_DISPLAY_TRACK = {
+  39: 40,  // Tape Echo 2
+  40: 41,  // Granular Delay
+  41: 42,  // Warp
+  42: 43,  // Twist
+  43: 45,  // Roll 2
+  44: 46,  // Freeze
+  45: 47,  // Chorus
+  46: 48,  // Reverb
+  47: 49,  // Gate Reverb
+  48: 50,  // Reverse Reverb
+  49: 51,  // Beat Scatter (file 49 → menu 51)
+  50: 52,  // Beat Repeat
+  51: 53,  // Beat Shift
+  52: 54,  // Vinyl Flick
+  53: 39,  // Tape Echo 1 in Track FX (file 53 → menu 39)
+  54: 44,  // Roll 1 in Track FX (file 54 → menu 44)
 };
 
 function displayIdxToFileIdx(displayIdx, fxKind) {
   if (displayIdx <= 38) return displayIdx;
-  if (displayIdx === 39) return 39;  // TE1
-  if (displayIdx === 40) return 41;  // TE2
-  if (displayIdx === 41) return 40;  // GD
-  if (displayIdx >= 42 && displayIdx <= 48) {
-    return DISPLAY_TO_FILE_42_50[displayIdx];
+  // 39-48: shared menu region, but Tape Echo 1 / Roll 1 land at different
+  // file idxs in Input vs Track contexts.
+  if (displayIdx === 39) return (fxKind === 'track') ? 53 : 49; // Tape Echo 1
+  if (displayIdx === 44) return (fxKind === 'track') ? 54 : 50; // Roll 1
+  if (DISPLAY_TO_FILE_SHARED[displayIdx] !== undefined) {
+    return DISPLAY_TO_FILE_SHARED[displayIdx];
   }
-  // 49+: depends on FX kind
-  if (fxKind === 'input') {
-    // 49 = Gate Reverb, 50 = Reverse Reverb (same in file)
-    return displayIdx;
+  // 49-50: Gate Reverb / Reverse Reverb (same file idx in both kinds: 47/48)
+  if (displayIdx === 49) return 47;
+  if (displayIdx === 50) return 48;
+  // 51-54: track-only beat effects (file 49-52)
+  if (fxKind === 'track') {
+    const beatMap = { 51: 49, 52: 50, 53: 51, 54: 52 };
+    return beatMap[displayIdx] ?? displayIdx;
   }
-  // Track FX:
-  //   menu 49 = GR (file 53), menu 50 = RR (file 54),
-  //   menu 51-54 = beat-only (file 49-52)
-  const trackMap = { 49: 53, 50: 54, 51: 49, 52: 50, 53: 51, 54: 52 };
-  return trackMap[displayIdx] ?? displayIdx;
+  return displayIdx;
 }
 
 function fileIdxToDisplayIdx(fileIdx, fxKind) {
   if (fileIdx <= 38) return fileIdx;
-  if (fileIdx === 39) return 39;
-  if (fileIdx === 40) return 41;
-  if (fileIdx === 41) return 40;
-  if (fileIdx >= 42 && fileIdx <= 48) {
-    return FILE_TO_DISPLAY_42_48[fileIdx];
-  }
-  if (fxKind === 'input') return fileIdx;
-  // Track FX:
-  const fileToDisplay = { 49: 51, 50: 52, 51: 53, 52: 54, 53: 49, 54: 50 };
-  return fileToDisplay[fileIdx] ?? fileIdx;
+  const table = (fxKind === 'track') ? FILE_TO_DISPLAY_TRACK : FILE_TO_DISPLAY_INPUT;
+  return table[fileIdx] ?? fileIdx;
 }
 
 // Map XML suffix → display name (used when we want to look up by element name)
@@ -2071,6 +2112,21 @@ function renderRhythmTab(mem) {
 // the lists diverge: Input FX gets Gate/Reverse Reverb at 49-50, while
 // Track FX gets the 4 track-only effects at 49-52 then Gate/Reverse Reverb
 // at 53-54.
+// XML element-name order for FX type sections (index → element suffix).
+// Note: Boss's XML element naming reflects each algorithm's heritage:
+//   - "_V505V2" suffix = "designed for the V505/RC-505mk2" (the newer one)
+//   - Plain name (TAPE_ECHO, ROLL) = legacy algorithm ported from RC-505mk1
+// So TAPE_ECHO_V505V2 = "Tape Echo 1" on the device (MK2-native algorithm),
+// TAPE_ECHO = "Tape Echo 2" (legacy MK1 import). Likewise for Roll 1 / Roll 2.
+//
+// Verified file storage order: the legacy MK1 effects (TAPE_ECHO, ROLL) sit
+// in the "natural" delay/reverb region (39, 43), while the MK2-native V505V2
+// versions (TAPE_ECHO_V505V2, ROLL_V505V2) were appended to the END of each
+// list when MK2 firmware shipped. So Input FX puts them at 49-50; Track FX
+// puts them at 53-54 (after the 4 track-only beat effects).
+//
+// Indices 0-48 are shared between Input FX and Track FX. Beyond that,
+// the lists diverge.
 const FX_XML_ORDER_SHARED = [
   'LPF','BPF','HPF','PHASER','FLANGER','SYNTH','LOFI','RADIO','RING_MODULATOR',
   'G2B','SUSTAINER','AUTO_RIFF','SLOW_GEAR','TRANSPOSE','PITCH_BEND','ROBOT',
@@ -2078,23 +2134,28 @@ const FX_XML_ORDER_SHARED = [
   'PREAMP','DIST','DYNAMICS','EQ','ISOLATOR','OCTAVE','AUTO_PAN','MANUAL_PAN',
   'STEREO_ENHANCE','TREMOLO','VIBRATO','PATTERN_SLICER','STEP_SLICER',
   'DELAY','PANNING_DELAY','REVERSE_DELAY','MOD_DELAY',
-  'TAPE_ECHO_V505V2',  // 39 = "Tape Echo 1"
+  'TAPE_ECHO',         // 39 = "Tape Echo 2" (legacy MK1 import)
   'GRANULAR_DELAY',    // 40
-  'TAPE_ECHO',         // 41 = "Tape Echo 2"
-  'WARP',              // 42
-  'TWIST',             // 43
+  'WARP',              // 41
+  'TWIST',             // 42
+  'ROLL',              // 43 = "Roll 2" (legacy MK1 import)
   'FREEZE',            // 44
   'CHORUS',            // 45
   'REVERB',            // 46
-  'ROLL_V505V2',       // 47 = "Roll 1"
-  'ROLL',              // 48 = "Roll 2"
+  'GATE_REVERB',       // 47
+  'REVERSE_REVERB',    // 48
 ];
 const FX_XML_ORDER_INPUT = [...FX_XML_ORDER_SHARED,
-  'GATE_REVERB','REVERSE_REVERB'
+  'TAPE_ECHO_V505V2',  // 49 = "Tape Echo 1" in Input FX
+  'ROLL_V505V2',       // 50 = "Roll 1" in Input FX
 ];
 const FX_XML_ORDER_TRACK = [...FX_XML_ORDER_SHARED,
-  'BEAT_SCATTER','BEAT_REPEAT','BEAT_SHIFT','VINYL_FLICK',
-  'GATE_REVERB','REVERSE_REVERB'
+  'BEAT_SCATTER',      // 49 in Track FX
+  'BEAT_REPEAT',       // 50
+  'BEAT_SHIFT',        // 51
+  'VINYL_FLICK',       // 52
+  'TAPE_ECHO_V505V2',  // 53 = "Tape Echo 1" in Track FX
+  'ROLL_V505V2',       // 54 = "Roll 1" in Track FX
 ];
 
 // Default reference used when context is unknown. Track-style is the
