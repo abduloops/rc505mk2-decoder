@@ -30,7 +30,7 @@ If you find something wrong, maybe open an issue im no like genius so I might no
 * **Only tested with an RC-505 mk2.** No RC-600 and no mk1.
 * Currently, only Memory files work, but I plan on getting SYSTEM1 and SYSTEM2.RC0 to work. idk about RHYTHM.RC0
 * Runs in browser type shihhhhh
-* 
+  
 ## Credits
 
 Reverse engineering done by yours truly, [@abduloops](https://github.com/abduloops). Everything else done by [Claude](https://claude.ai) 😅😅 (i cant code for shihhhh my bad chat)
