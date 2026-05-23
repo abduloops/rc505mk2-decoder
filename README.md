@@ -29,7 +29,7 @@ Also, i dont plan on making an editor because thats dangerous. you could brick u
 
 ## Heads up seven up
 
-Before lollygagging in ur memory files, **BACK UP YOUR LOOP. i.e. MAKE A COPY OF YOUR ROLAND FOLDER**. Copy that shi and paste it somewhere else. Theres like a 0% chance of this cuz its simply a viewer, not editor so it cant destroy ur loop. but always good rule of thumb
+Before lollygagging in ur memory files, **BACK UP YOUR LOOP. i.e. MAKE A COPY OF YOUR ROLAND FOLDER**. Copy that shi and paste it somewhere else. Theres like a super duper ultra low chance of this cuz its simply a viewer, not editor so it cant destroy ur loop. but always good rule of thumb
 
 Also blah blah blah i aint responsible for stuff that happen to u gang. nothing should but like if ur loop goes bye or something theres 0 chance of it being my fault cuz its just a viewer.
 
