@@ -25,6 +25,14 @@ This is still work-in-progress little project. A lot of the values and stuff hav
 
 If you find something wrong, maybe open an issue im no like genius so I might not do anything about it lol or ill just fix it later. ionknow how ts work ngl.
 
+Also, i dont plan on making an editor because thats dangerous. you could brick ur loop prolly so dont try plz (i aint responsible if you do, this doesnt let you edit).
+
+## Heads up seven up
+
+Before lollygagging in ur memory files, **BACK UP YOUR LOOP. i.e. MAKE A COPY OF YOUR ROLAND FOLDER**. Copy that shi and paste it somewhere else. Theres like a 0% chance of this cuz its simply a viewer, not editor so it cant destroy ur loop. but always good rule of thumb
+
+Also blah blah blah i aint responsible for stuff that happen to u gang. nothing should but like if ur loop goes bye or something theres 0 chance of it being my fault cuz its just a viewer.
+
 ## Compatibility
 
 * **Only tested with an RC-505 mk2.** No RC-600 and no mk1.
