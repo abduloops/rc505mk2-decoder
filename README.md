@@ -3,23 +3,25 @@ Upload your .RC0 files from your RC-505 MK2 and take a look at your settings lol
 
 Drag-and-drop viewer for rc-505 mk2 memory files (.RC0). Its basically .xml so it decodes it and makes it readable.
 
-<img width="2542" height="1040" alt="welcome to site peter" src="https://github.com/user-attachments/assets/f7debae7-f97d-4967-89af-91286b720b73" />
+<img width="1898" height="851" alt="Screenshot 2026-05-27 074940" src="https://github.com/user-attachments/assets/f1f5a7c4-0140-46bd-9fe9-133b80c04e5e" />
 
 *welcome to site pter*
 
-<img width="1638" height="1192" alt="ooooo trax" src="https://github.com/user-attachments/assets/5ca879b7-5e06-44b6-91e8-73dcff988890" />
+<img width="1576" height="848" alt="Screenshot 2026-05-27 075034" src="https://github.com/user-attachments/assets/31266753-0f3e-44cc-a811-7ac3e1ff7cd4" />
 
 *traxs wo omg*
 
-<img width="1691" height="1148" alt="WGAT SSTEPSICER" src="https://github.com/user-attachments/assets/5b6402a5-90fe-4100-81f2-711a8464be98" />
+<img width="1234" height="825" alt="Screenshot 2026-05-27 075106" src="https://github.com/user-attachments/assets/c9094f2d-a092-4214-a42d-aba018269b8a" />
 
 *wgat graph holy moly*
 
-<img width="1678" height="962" alt="oooo drop down menu" src="https://github.com/user-attachments/assets/caa5ed32-fbb8-4069-8219-efef7741ed71" />
+<img width="1244" height="726" alt="Screenshot 2026-05-27 075210" src="https://github.com/user-attachments/assets/21e4d8ed-0c48-4a5f-961c-85885d6e626b" />
 
 *drop down what the fart*
 
-<img width="1719" height="942" alt="xml for nerds XD" src="https://github.com/user-attachments/assets/6acba616-0b18-49ba-b18a-1a5c8ad943e0" />
+<img width="1302" height="607" alt="Screenshot 2026-05-27 075317" src="https://github.com/user-attachments/assets/21339820-997f-4d74-85b2-b983c4066ff4" />
+
+*switch thru all ur memories holy*
 
 ## Usage 
 
