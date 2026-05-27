@@ -132,8 +132,11 @@
   #drop p { margin: 4px 0; color: var(--text-dim); font-size: 12px; }
   #drop .hint { color: var(--text-mute); font-size: 11px; margin-top: 16px; }
   #drop input[type=file] { display: none; }
+  #drop .btn-row {
+    display: flex; gap: 10px; justify-content: center;
+    margin-top: 18px; flex-wrap: wrap;
+  }
   #drop button {
-    margin-top: 18px;
     background: var(--red); color: #fff;
     border: none; padding: 10px 24px;
     font-family: 'JetBrains Mono', monospace; font-weight: 700;
@@ -142,6 +145,59 @@
     transition: background 0.1s;
   }
   #drop button:hover { background: var(--red-glow); }
+  #drop button.secondary {
+    background: transparent;
+    border: 1px solid var(--red);
+    color: var(--red-glow);
+  }
+  #drop button.secondary:hover {
+    background: rgba(216,40,26,0.15);
+    color: #fff;
+  }
+  /* Loading state — replaces normal drop zone content while a batch is parsing */
+  #drop.loading {
+    border-style: solid;
+    border-color: rgba(232,168,35,0.5);
+    background:
+      repeating-linear-gradient(45deg, transparent 0 12px, rgba(232,168,35,0.025) 12px 24px),
+      var(--bg-panel);
+    cursor: default;
+  }
+  #drop .loading-content { display: none; }
+  #drop.loading .normal-content { display: none; }
+  #drop.loading .loading-content {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    padding: 8px 0;
+  }
+  .drop-load-status {
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(232,168,35,0.95);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .drop-load-bar {
+    width: 100%; max-width: 360px;
+    height: 10px;
+    background: rgba(232,168,35,0.12);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 1px solid rgba(232,168,35,0.3);
+  }
+  .drop-load-bar-fill {
+    height: 100%;
+    background: rgba(232,168,35,0.95);
+    width: 0%;
+    transition: width 150ms ease;
+  }
+  .drop-load-count {
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(232,168,35,0.7);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    font-variant-numeric: tabular-nums;
+  }
 
   /* ===== LCD-style memory header ===== */
   .lcd {
@@ -781,6 +837,83 @@
     padding: 4px 8px;
     font-family: inherit;
   }
+  /* ===== Raw-XML switch warning modal ===== */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 150ms ease;
+  }
+  .modal-backdrop.show { opacity: 1; }
+  .modal-box {
+    background: var(--bg-panel);
+    border: 1px solid var(--red);
+    border-radius: 6px;
+    padding: 20px 22px;
+    max-width: 380px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .modal-title {
+    color: var(--red);
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    margin: 0 0 10px;
+    text-transform: uppercase;
+  }
+  .modal-body {
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 0 0 14px;
+  }
+  .modal-dontshow {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-dim);
+    margin: 0 0 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .modal-dontshow input { accent-color: var(--red); cursor: pointer; }
+  .modal-actions {
+    display: flex; gap: 8px; justify-content: flex-end;
+    align-items: center;
+  }
+  .modal-countdown {
+    color: var(--text-mute);
+    font-size: 11px;
+    margin-right: auto;
+    font-variant-numeric: tabular-nums;
+  }
+  .modal-btn {
+    background: transparent;
+    border: 1px solid var(--text-mute);
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 120ms ease;
+  }
+  .modal-btn:hover:not(:disabled) {
+    border-color: var(--text-dim);
+    color: #fff;
+  }
+  .modal-btn.primary {
+    background: rgba(216,40,26,0.15);
+    border-color: var(--red);
+    color: var(--red-glow);
+  }
+  .modal-btn.primary:hover:not(:disabled) {
+    background: rgba(216,40,26,0.25);
+    color: #fff;
+  }
+  .modal-btn:disabled {
+    opacity: 0.4; cursor: not-allowed;
+  }
   /* ===== Memory switcher button + dropdown ===== */
   .mem-switch-btn {
     margin-top: 8px;
@@ -802,9 +935,47 @@
     border: 1px solid rgba(232,168,35,0.4);
     border-radius: 6px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-    min-width: 220px; max-width: 320px;
-    max-height: 400px; overflow-y: auto;
+    width: 320px;
+    max-height: 440px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
     z-index: 500;
+  }
+  .mem-switcher-search {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(232,168,35,0.15);
+    background: rgba(0,0,0,0.25);
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .mem-switcher-search-icon {
+    color: rgba(232,168,35,0.5);
+    font-size: 13px;
+    line-height: 1;
+  }
+  .mem-switcher-search input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: rgba(232,168,35,0.95);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 2px 0;
+  }
+  .mem-switcher-search input::placeholder {
+    color: rgba(232,168,35,0.35);
+  }
+  .mem-switcher-search-count {
+    font-size: 10px;
+    color: rgba(232,168,35,0.45);
+    letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .mem-switcher-list {
+    overflow-y: auto;
+    flex: 1;
     padding: 4px 0;
   }
   .mem-switcher-row {
@@ -819,15 +990,67 @@
   .mem-switcher-row.active {
     background: rgba(232,168,35,0.18);
     color: rgba(232,168,35,1);
+    border-left: 2px solid rgba(232,168,35,0.9);
+    padding-left: 10px;
+  }
+  .mem-switcher-row.kbd-focus {
+    background: rgba(232,168,35,0.1);
+    outline: 1px solid rgba(232,168,35,0.4);
+    outline-offset: -1px;
   }
   .mem-switcher-no {
     font-weight: 700; min-width: 24px;
     color: rgba(232,168,35,1);
+    font-variant-numeric: tabular-nums;
   }
-  .mem-switcher-name { flex: 1; }
+  .mem-switcher-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .mem-switcher-meta {
     font-size: 9px; letter-spacing: 0.15em;
     color: rgba(232,168,35,0.5);
+    flex-shrink: 0;
+  }
+  .mem-switcher-meta.pair {
+    background: rgba(232,168,35,0.12);
+    color: rgba(232,168,35,0.9);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .mem-switcher-meta.new {
+    background: rgba(216,40,26,0.18);
+    color: rgba(255,67,50,0.95);
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-right: 4px;
+  }
+  .mem-switcher-empty {
+    padding: 20px;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(232,168,35,0.4);
+  }
+  .mem-switcher-footer {
+    padding: 6px 10px;
+    border-top: 1px solid rgba(232,168,35,0.15);
+    background: rgba(0,0,0,0.25);
+    font-size: 9px;
+    color: rgba(232,168,35,0.4);
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+  .mem-switcher-footer kbd {
+    background: rgba(232,168,35,0.1);
+    border: 1px solid rgba(232,168,35,0.2);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 9px;
+    color: rgba(232,168,35,0.7);
+    font-family: inherit;
+    margin: 0 2px;
   }
 </style>
 </head>
@@ -847,11 +1070,27 @@
 
 <main>
   <div id="drop">
-    <h2>Drop a MEMORY###.RC0 file here</h2>
-    <p>or click to browse</p>
-    <p class="hint">Files are parsed locally in your browser. Nothing is uploaded.</p>
-    <button type="button" id="browse-btn">Browse…</button>
-    <input type="file" id="file" accept=".RC0,.xml" />
+    <div class="normal-content">
+      <h2>Drop .RC0 files or your ROLAND/DATA folder</h2>
+      <p>or use the buttons below to browse</p>
+      <p class="hint">
+        Files parse locally in your browser — nothing is uploaded.
+        SYSTEM1.RC0, SYSTEM2.RC0, and RHYTHM.RC0 are skipped (not supported yet).
+      </p>
+      <div class="btn-row">
+        <button type="button" id="browse-btn">Browse files…</button>
+        <button type="button" id="browse-folder-btn" class="secondary">Browse folder…</button>
+      </div>
+      <input type="file" id="file" accept=".RC0,.xml" multiple />
+      <input type="file" id="file-folder" webkitdirectory directory multiple />
+    </div>
+    <div class="loading-content">
+      <div class="drop-load-status" id="drop-load-status">Parsing memories</div>
+      <div class="drop-load-bar">
+        <div class="drop-load-bar-fill" id="drop-load-fill"></div>
+      </div>
+      <div class="drop-load-count" id="drop-load-count">0 / 0 files</div>
+    </div>
   </div>
 
   <div id="result" style="display:none;"></div>
@@ -2906,7 +3145,6 @@ function render(ctx, preferredTabId) {
   root.style.display = '';
 
   // Header LCD
-  const memId = mem.getAttribute('id');
   const name = decodeName(findSection(mem, 'NAME'));
   const master = findSection(mem, 'MASTER');
   let tempoStr = '—';
@@ -2915,12 +3153,15 @@ function render(ctx, preferredTabId) {
     tempoStr = (t / 10).toFixed(1);
   }
 
+  // Slot # comes from the XML memId — the only source of truth.
+  const xmlSlot = ctx.xmlSlot ?? ((parseInt(mem.getAttribute('id'), 10) || 0) + 1);
+
   const lcd = el('div', 'lcd');
-  const memNo = String((parseInt(memId, 10) || 0) + 1).padStart(2, '0');
+  const memNo = String(xmlSlot).padStart(2, '0');
   lcd.appendChild(el('div', 'memno', memNo));
   const info = el('div', 'meminfo');
   info.appendChild(el('div', 'name', name));
-  info.appendChild(el('div', 'meta', `Memory slot ${memNo} · mem id ${memId}`));
+  info.appendChild(el('div', 'meta', `Memory slot ${memNo}`));
   if (ctx.saveCount != null) {
     info.appendChild(el('div', 'meta meta-dim', `Save #${ctx.saveCount}`));
   }
@@ -2928,9 +3169,9 @@ function render(ctx, preferredTabId) {
   const tempoBox = el('div', 'tempo');
   tempoBox.appendChild(el('div', 'val', '♩=' + tempoStr));
   tempoBox.appendChild(el('div', 'label', 'BPM'));
-  // Memory switcher button — shows only if 2+ distinct memories are loaded.
-  // (A/B pairs count as 1 memory since the pair banner already handles them.)
-  if (loadedPairs.size >= 2) {
+  // Memory switcher button — shows only if 2+ entries are loaded.
+  // (A/B pairs count as 1 entry since the pair banner handles them.)
+  if (loadedEntries.length >= 2) {
     const switchBtn = el('button', 'mem-switch-btn', 'Switch memory ▾');
     switchBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -2987,15 +3228,30 @@ function render(ctx, preferredTabId) {
 // File loading + A/B pair handling
 // ============================================================================
 
-// Soft cap on how many distinct memories we keep in state. The RC-505mk2
-// can have up to 99 × 2 = 198 .RC0 files in a backup, but anything beyond
-// ~20 makes the switcher unwieldy. If exceeded, oldest entries get dropped.
-const MEMORY_LIMIT = 20;
+// State model:
+//
+// - loadedEntries: array of "entries" the user has loaded. Each entry is one
+//   memory's worth of data, displayed as one row in the switcher. An entry
+//   contains 1 or 2 files (A and B sides of an A/B pair, or a solo file).
+// - loadedHashes: SHA-1 set across all entries. Used to silently skip
+//   duplicate file drops (identical bytes = same data, no need to re-add).
+// - currentDropId: monotonically incremented per drop event. Entries get
+//   tagged with the dropId they came in on, which drives the "NEW" badge
+//   in the switcher.
+//
+// Entry shape: { dropId, files: [{ ctx, fileName, hash }], isNew: bool }
+//
+// Pairing rule: WITHIN a single drop, files sharing xmlSlot get bundled
+// into the same entry (A+B pair). Drops never merge with each other —
+// dropping the same memory in two separate drops produces two entries.
+//
+// This deliberately replaces the older "loadedPairs map keyed by slot" model.
+// Hash-dedupe handles "user dropped the same file twice" gracefully without
+// any save-count comparisons or in-place overwrites.
 
-// Holds the currently-loaded files (one per "memory pair").
-// Key: `${memId}|${nameDecoded}` so files that share a filename but contain
-// different memories don't get mis-paired. Value: { ctx, fileName }.
-const loadedPairs = new Map();
+const loadedEntries = [];
+const loadedHashes = new Set();
+let currentDropId = 0;
 // The currently-displayed ctx.
 let activeCtx = null;
 // The currently-active tab id, tracked so switching between A/B versions
@@ -3005,7 +3261,7 @@ let activeTabId = null;
 // Open a small popup menu listing all loaded memories. The user clicks one
 // to switch to it. Pair partners are picked automatically (newer one shown).
 function openMemorySwitcher(anchor) {
-  // Remove any existing menu
+  // Remove any existing menu (clicking the button while open closes it)
   const existing = document.getElementById('mem-switcher-menu');
   if (existing) { existing.remove(); return; }
 
@@ -3013,34 +3269,178 @@ function openMemorySwitcher(anchor) {
   menu.id = 'mem-switcher-menu';
   menu.className = 'mem-switcher-menu';
 
-  // Build entries from loadedPairs, sorted by memory slot number ascending
-  // (slot number = memId + 1, so sorting by memId is equivalent). Within
-  // each pair the newer-save wins.
-  const sortedEntries = [...loadedPairs.entries()]
-    .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10));
+  // Build rows from loadedEntries. Each entry → one row. Sort by xmlSlot
+  // ascending so the switcher reads like the device's memory bank list.
+  // Within ties (multiple entries sharing a slot from different drops),
+  // sort by dropId (oldest drop first).
+  const sortedEntries = [...loadedEntries].sort((a, b) => {
+    if (a.slot !== b.slot) return a.slot - b.slot;
+    return a.dropId - b.dropId;
+  });
 
-  for (const [key, entries] of sortedEntries) {
-    const newest = entries.reduce((a, b) =>
+  // Pre-compute display info per row. Disambiguate duplicate names by
+  // appending (2), (3), etc — when multiple entries share the same display
+  // name, they get numbered in the order they appear.
+  const nameCount = new Map();
+  const allRows = sortedEntries.map((entry) => {
+    // Pick the "newest" file in the entry (highest saveCount) as the row's ctx.
+    const newest = entry.files.reduce((a, b) =>
       (a.ctx.saveCount ?? 0) >= (b.ctx.saveCount ?? 0) ? a : b
     );
     const c = newest.ctx;
-    const isActive = c === activeCtx;
-    const memNo = String((parseInt(c.mem.getAttribute('id'), 10) || 0) + 1).padStart(2, '0');
-    const nm = decodeName(findSection(c.mem, 'NAME'));
+    const memNoNum = entry.slot;
+    const memNo = String(memNoNum).padStart(2, '0');
+    const rawName = decodeName(findSection(c.mem, 'NAME'));
+    const seen = (nameCount.get(rawName) || 0) + 1;
+    nameCount.set(rawName, seen);
+    const displayName = seen > 1 ? `${rawName} (${seen})` : rawName;
+    return {
+      ctx: c,
+      entry,
+      memNo,
+      memNoNum,
+      name: displayName,
+      isPair: entry.files.length >= 2,
+      isActive: c === activeCtx,
+      isNew: !!entry.isNew,
+      // Pre-lowered for cheap case-insensitive matching
+      nameLower: displayName.toLowerCase(),
+    };
+  });
 
-    const row = document.createElement('button');
-    row.className = 'mem-switcher-row' + (isActive ? ' active' : '');
-    row.innerHTML = `
-      <span class="mem-switcher-no">${memNo}</span>
-      <span class="mem-switcher-name">${nm}</span>
-      <span class="mem-switcher-meta">${entries.length > 1 ? 'A+B' : ''}</span>
-    `;
-    row.addEventListener('click', () => {
-      setActiveCtx(c);
-      menu.remove();
+  // ===== Search bar =====
+  const search = document.createElement('div');
+  search.className = 'mem-switcher-search';
+  search.innerHTML = `
+    <span class="mem-switcher-search-icon">⌕</span>
+    <input type="text" placeholder="Search slot # or name…" autocomplete="off" />
+    <span class="mem-switcher-search-count"></span>
+  `;
+  menu.appendChild(search);
+  const input = search.querySelector('input');
+  const countEl = search.querySelector('.mem-switcher-search-count');
+
+  // ===== List container =====
+  const list = document.createElement('div');
+  list.className = 'mem-switcher-list';
+  menu.appendChild(list);
+
+  // ===== Footer with kbd hints =====
+  const footer = document.createElement('div');
+  footer.className = 'mem-switcher-footer';
+  footer.innerHTML = '<kbd>↑↓</kbd> nav <kbd>↵</kbd> select <kbd>esc</kbd> close';
+  menu.appendChild(footer);
+
+  // Track which row the keyboard is currently focused on (index into the
+  // currently-filtered list, not the full list).
+  let kbdIdx = 0;
+  let visibleRows = [];
+
+  // Render the list based on the current search query. Cheap: just toggles
+  // visibility / classes, doesn't recreate DOM each keystroke.
+  function renderList(query) {
+    const q = (query || '').toLowerCase().trim();
+    list.innerHTML = '';
+    visibleRows = allRows.filter(r => {
+      if (!q) return true;
+      // Match against slot number (both padded "01" and raw "1")
+      if (r.memNo.includes(q)) return true;
+      if (String(r.memNoNum).includes(q)) return true;
+      return r.nameLower.includes(q);
     });
-    menu.appendChild(row);
+
+    countEl.textContent = q
+      ? `${visibleRows.length} / ${allRows.length}`
+      : `${allRows.length}`;
+
+    if (visibleRows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'mem-switcher-empty';
+      empty.textContent = q ? `No memories match "${query}"` : 'No memories loaded';
+      list.appendChild(empty);
+      return;
+    }
+
+    // Default kbd focus: first visible row, OR the active one if it's visible
+    // (so opening the menu has the cursor on "where you are" by default).
+    if (!q) {
+      const activeVisibleIdx = visibleRows.findIndex(r => r.isActive);
+      kbdIdx = activeVisibleIdx >= 0 ? activeVisibleIdx : 0;
+    } else {
+      kbdIdx = 0;
+    }
+
+    visibleRows.forEach((r, i) => {
+      const row = document.createElement('button');
+      row.className = 'mem-switcher-row'
+        + (r.isActive ? ' active' : '')
+        + (i === kbdIdx ? ' kbd-focus' : '');
+      // NEW badge if this entry came in on the most recent drop and the
+      // user hasn't clicked it yet. A+B badge if the entry has both A/B sides.
+      const tags = [];
+      if (r.isNew) tags.push('<span class="mem-switcher-meta new">NEW</span>');
+      if (r.isPair) tags.push('<span class="mem-switcher-meta pair">A+B</span>');
+      row.innerHTML = `
+        <span class="mem-switcher-no">${r.memNo}</span>
+        <span class="mem-switcher-name">${escapeHtml(r.name)}</span>
+        ${tags.join('')}
+      `;
+      row.addEventListener('click', () => {
+        // Acknowledge: clicking a NEW entry clears its badge.
+        if (r.entry.isNew) r.entry.isNew = false;
+        menu.remove();
+        confirmRawSwitchIfNeeded(() => setActiveCtx(r.ctx));
+      });
+      row.addEventListener('mouseenter', () => {
+        // Mouse hover takes over the kbd focus highlight to avoid two
+        // rows looking "selected" at once.
+        kbdIdx = i;
+        updateKbdFocus();
+      });
+      list.appendChild(row);
+    });
   }
+
+  // Update which row has the .kbd-focus class. Cheap: just class twiddling.
+  function updateKbdFocus() {
+    const rows = list.querySelectorAll('.mem-switcher-row');
+    rows.forEach((row, i) => {
+      row.classList.toggle('kbd-focus', i === kbdIdx);
+    });
+    // Scroll the focused row into view if it's off-screen
+    if (rows[kbdIdx]) {
+      rows[kbdIdx].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  // Keyboard handling on the search input
+  input.addEventListener('input', () => renderList(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (visibleRows.length === 0) return;
+      kbdIdx = (kbdIdx + 1) % visibleRows.length;
+      updateKbdFocus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (visibleRows.length === 0) return;
+      kbdIdx = (kbdIdx - 1 + visibleRows.length) % visibleRows.length;
+      updateKbdFocus();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (visibleRows.length === 0) return;
+      const r = visibleRows[kbdIdx];
+      if (r.entry && r.entry.isNew) r.entry.isNew = false;
+      menu.remove();
+      confirmRawSwitchIfNeeded(() => setActiveCtx(r.ctx));
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      menu.remove();
+    }
+  });
+
+  // Initial render
+  renderList('');
 
   // Position below the anchor button
   const rect = anchor.getBoundingClientRect();
@@ -3048,6 +3448,9 @@ function openMemorySwitcher(anchor) {
   menu.style.top = (rect.bottom + window.scrollY + 6) + 'px';
   menu.style.right = (window.innerWidth - rect.right) + 'px';
   document.body.appendChild(menu);
+
+  // Autofocus the search field so the user can just start typing
+  input.focus();
 
   // Click outside to close
   setTimeout(() => {
@@ -3060,12 +3463,19 @@ function openMemorySwitcher(anchor) {
   }, 0);
 }
 
+// Simple HTML escape for user-controlled strings rendered via innerHTML.
+// Memory names come from the device but users can rename them, so play safe.
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 // Detect if an FX bank slot matches the device's default for that slot.
-// Defaults verified from fresh-reset memories:
-//   IFX bank A-D slots: A=LPF(0), B=G2B(9), C=PATTERN SLICER(33), D=DELAY(35)
-//   TFX bank A-D slots: A=BEAT SCATTER(49), B=FLANGER(4), C=TRANSPOSE(13), D=GRANULAR DELAY(40)
-// We skip bank A in the check since users put their primary effects there.
-// If banks B, C, AND D all match defaults, it's a strong "fresh memory" signal.
+// Defaults verified from fresh-reset memories (every bank A-D follows the
+// same per-slot pattern):
+//   IFX slot A=LPF(0), B=G2B(9), C=PATTERN SLICER(33), D=DELAY(35)
+//   TFX slot A=BEAT SCATTER(49), B=FLANGER(4), C=TRANSPOSE(13), D=GRANULAR DELAY(40)
 const DEFAULT_IFX_TYPES = { A: 0, B: 9, C: 33, D: 35 };
 const DEFAULT_TFX_TYPES = { A: 49, B: 4, C: 13, D: 40 };
 
@@ -3078,9 +3488,33 @@ function getSlotType(fxRoot, bank, slot) {
   return parseInt(typeEl.textContent, 10);
 }
 
+// Strict "is this a factory-default memory?" check. All of:
+//   1. NAME == "MemoryNN" (NN = slot number zero-padded) — factory naming convention
+//   2. No track has recorded audio (W=0 for all 6)
+//   3. Every IFX slot in every bank (16 total) matches factory default
+//   4. Every TFX slot in every bank (16 total) matches factory default
+// Used to decide whether to show the "try the other A/B version" toast —
+// only fires for memories that are completely untouched, so users editing
+// even one FX in bank A won't get a false alarm.
 function looksLikeFreshMemory(ctx) {
-  // Check banks B, C, D (skip A since that's where users normally edit).
-  for (const bank of ['B', 'C', 'D']) {
+  if (!ctx.mem) return false;
+
+  // 1. Name check — factory default is "MemoryNN" where NN = (memId + 1) zero-padded
+  const slotNum = (parseInt(ctx.mem.getAttribute('id'), 10) || 0) + 1;
+  const expectedName = 'Memory' + String(slotNum).padStart(2, '0');
+  const actualName = decodeName(findSection(ctx.mem, 'NAME'));
+  if (actualName !== expectedName) return false;
+
+  // 2. Audio check — any recorded track means not fresh
+  for (let i = 1; i <= 6; i++) {
+    const trk = ctx.mem.querySelector(`:scope > TRACK${i}`);
+    if (!trk) continue;
+    const w = trk.querySelector(':scope > W');
+    if (w && parseInt(w.textContent, 10) === 1) return false;
+  }
+
+  // 3 + 4. FX check — every slot in every bank must match factory default
+  for (const bank of ['A', 'B', 'C', 'D']) {
     for (const slot of ['A', 'B', 'C', 'D']) {
       const ifxType = getSlotType(ctx.ifx, bank, slot);
       const tfxType = getSlotType(ctx.tfx, bank, slot);
@@ -3088,6 +3522,7 @@ function looksLikeFreshMemory(ctx) {
       if (tfxType !== DEFAULT_TFX_TYPES[slot]) return false;
     }
   }
+
   return true;
 }
 
@@ -3143,7 +3578,7 @@ function renderPairBanner(ctx, otherEntry) {
     `Switch to ${otherEntry.fileName} (save #${otherEntry.ctx.saveCount})`);
   switchBtn.addEventListener('click', () => {
     // Preserve the current tab when toggling A/B (same memory)
-    setActiveCtx(otherEntry.ctx, activeTabId);
+    confirmRawSwitchIfNeeded(() => setActiveCtx(otherEntry.ctx, activeTabId));
   });
   banner.appendChild(label);
   banner.appendChild(switchBtn);
@@ -3151,17 +3586,101 @@ function renderPairBanner(ctx, otherEntry) {
   root.insertBefore(banner, root.firstChild);
 }
 
+// Switching memories on the Raw XML tab tears down + rebuilds thousands
+// of DOM nodes synchronously — spam-clicking can freeze the page for
+// several seconds. Gate it behind a 5-second confirmation modal so users
+// understand they're about to do an expensive operation.
+//
+// `proceed` is the callback to actually perform the switch.
+//
+// Session-scoped suppression: if the user checks "Don't show this again",
+// the flag lives in memory and resets on reload. Decided against
+// localStorage so a careless dismissal doesn't silently haunt the user
+// forever — they get one fresh reminder per page load.
+let rawSwitchWarningSuppressed = false;
+
+function confirmRawSwitchIfNeeded(proceed) {
+  if (activeTabId !== 'raw' || rawSwitchWarningSuppressed) { proceed(); return; }
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const box = document.createElement('div');
+  box.className = 'modal-box';
+  box.innerHTML = `
+    <h3 class="modal-title">Heads up — Raw XML tab</h3>
+    <p class="modal-body">
+      Switching memories on this tab rebuilds the entire XML dump and can
+      lag the page for a few seconds. Spam-clicking will freeze things
+      worse. You can read everything else (Tracks, FX, etc.) just fine —
+      the Raw tab is mostly for diffing two files.
+    </p>
+    <label class="modal-dontshow">
+      <input type="checkbox" id="modal-dontshow" />
+      Don't show this again (this session)
+    </label>
+    <div class="modal-actions">
+      <span class="modal-countdown" id="modal-countdown">Wait 5s…</span>
+      <button class="modal-btn" id="modal-cancel">Cancel</button>
+      <button class="modal-btn primary" id="modal-ok" disabled>Switch anyway</button>
+    </div>
+  `;
+  backdrop.appendChild(box);
+  document.body.appendChild(backdrop);
+  // Fade in
+  requestAnimationFrame(() => backdrop.classList.add('show'));
+
+  const okBtn = box.querySelector('#modal-ok');
+  const cancelBtn = box.querySelector('#modal-cancel');
+  const countdownEl = box.querySelector('#modal-countdown');
+  const dontShow = box.querySelector('#modal-dontshow');
+
+  const close = () => {
+    backdrop.classList.remove('show');
+    setTimeout(() => backdrop.remove(), 150);
+    clearInterval(tickId);
+    document.removeEventListener('keydown', onKey);
+  };
+
+  // 5s countdown — disables the OK button until elapsed so the user
+  // actually reads the warning.
+  let remaining = 5;
+  const tickId = setInterval(() => {
+    remaining -= 1;
+    if (remaining > 0) {
+      countdownEl.textContent = `Wait ${remaining}s…`;
+    } else {
+      countdownEl.textContent = '';
+      okBtn.disabled = false;
+      clearInterval(tickId);
+    }
+  }, 1000);
+
+  okBtn.addEventListener('click', () => {
+    if (okBtn.disabled) return;
+    // Respect the user's choice only when they confirm — checking it then
+    // hitting cancel doesn't suppress (matches typical "remember" UX).
+    if (dontShow.checked) rawSwitchWarningSuppressed = true;
+    close();
+    proceed();
+  });
+  cancelBtn.addEventListener('click', close);
+  // Esc cancels (only after countdown — before that, ignore so the user
+  // can't accidentally dismiss without seeing the message at all).
+  const onKey = (e) => {
+    if (e.key === 'Escape' && !okBtn.disabled) close();
+  };
+  document.addEventListener('keydown', onKey);
+}
+
 function setActiveCtx(ctx, preferredTabId) {
   activeCtx = ctx;
   render(ctx, preferredTabId);
-  // Check for an A/B pair partner
-  const memId = ctx.mem.getAttribute('id');
-  const key = memId;
-  const entries = loadedPairs.get(key);
-  const hasPair = entries && entries.length >= 2;
+  // Find this ctx's entry in loadedEntries to check for a pair partner.
+  // An entry is "paired" if it has 2+ files (A+B from same drop).
+  const entry = loadedEntries.find(e => e.files.some(f => f.ctx === ctx));
+  const hasPair = entry && entry.files.length >= 2;
   if (hasPair) {
-    // Find the other one
-    const other = entries.find(e => e.ctx !== ctx);
+    const other = entry.files.find(f => f.ctx !== ctx);
     if (other) renderPairBanner(ctx, other);
     // If a "looks fresh" toast was queued or showing, kill it — having
     // both A and B means the user already has the data they need.
@@ -3176,13 +3695,11 @@ function setActiveCtx(ctx, preferredTabId) {
       // before it shows. (e.g., user drags both A and B at once.)
       if (toastShowTimer) clearTimeout(toastShowTimer);
       toastShowTimer = setTimeout(() => {
-        // Re-check pair status at fire time, in case the pair arrived
+        // Re-check entry pair status at fire time, in case the pair arrived
         // between the schedule and now.
-        const cur = loadedPairs.get(key);
-        if (cur && cur.length >= 2) return;
-        // Also skip if the user is no longer looking at this ctx — e.g. they
-        // dropped multiple unrelated memories and the active one is now a
-        // non-default memory. The toast would be misleading otherwise.
+        const curEntry = loadedEntries.find(e => e.files.some(f => f.ctx === ctx));
+        if (curEntry && curEntry.files.length >= 2) return;
+        // Also skip if the user is no longer looking at this ctx.
         if (activeCtx !== ctx) return;
         showToast(
           'Loop data missing? This memory looks fresh — try uploading the other letter version (A or B).',
@@ -3193,102 +3710,333 @@ function setActiveCtx(ctx, preferredTabId) {
   }
 }
 
-function loadFile(file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const ctx = parseRC0(e.target.result);
-      ctx._fileName = file.name;
-      // Track this file in loadedPairs keyed by memId. The name field is
-      // mutable on the device (one of A/B may have been renamed and saved
-      // while the other still shows the original default name), so pairing
-      // only on memId is the safe choice. memId is the slot number, which
-      // is unique per memory.
-      const memId = ctx.mem.getAttribute('id');
-      const key = memId;
-      let entries = loadedPairs.get(key);
-      const isNewMemory = !entries;
-      if (!entries) {
-        // Enforce soft cap: if at limit, drop the oldest entry (first key).
-        // Accumulate the drop count so loadFiles can show one summary toast
-        // at the end (instead of N toasts overwriting each other rapidly).
-        if (loadedPairs.size >= MEMORY_LIMIT) {
-          const oldestKey = loadedPairs.keys().next().value;
-          loadedPairs.delete(oldestKey);
-          batchDroppedCount++;
-        }
-        entries = [];
-        loadedPairs.set(key, entries);
-      }
-      // De-dupe by filename in case user drops the same file twice
-      const existing = entries.findIndex(e => e.fileName === file.name);
-      if (existing >= 0) entries[existing] = { ctx, fileName: file.name };
-      else entries.push({ ctx, fileName: file.name });
+// Files we never want to load even if the user drops them — these exist in
+// every ROLAND backup but have totally different formats and aren't supported.
+// Matched case-insensitively against the filename only (ignoring path).
+const IGNORED_FILENAMES = new Set(['system1.rc0', 'system2.rc0', 'rhythm.rc0']);
 
-      // If this is a pair (2 entries with same memId+name), pick the newer one
-      let toShow = ctx;
-      if (entries.length >= 2) {
-        const newest = entries.reduce((a, b) =>
-          (a.ctx.saveCount ?? 0) >= (b.ctx.saveCount ?? 0) ? a : b
-        );
-        toShow = newest.ctx;
-      }
-      setActiveCtx(toShow);
-      window.scrollTo({ top: document.getElementById('result').offsetTop - 20, behavior: 'smooth' });
-    } catch (err) {
-      alert('Could not parse file: ' + err.message);
-    }
-  };
-  reader.readAsText(file);
+// Track per-file parse failures in the current batch (surfaced in summary toast).
+let batchParseErrors = 0;
+// Files in the current batch that were silently skipped because their hash
+// matched a previously-loaded file (already-loaded duplicate detection).
+let batchDuplicates = 0;
+
+// Compute SHA-1 hash of a file's bytes as a lowercase hex string.
+// Used to detect duplicate file drops across different drop events — if the
+// same .RC0 file is dropped twice (e.g. dropping two backups that share an
+// unchanged memory), the second one's hash matches the first and we skip it.
+async function hashFile(file) {
+  const buf = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-1', buf);
+  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Track how many memories were dropped during the current load batch so we
-// can summarize at the end instead of toasting once per drop.
-let batchDroppedCount = 0;
+// Parse one file's text into a ctx. Throws on parse error.
+function parseRC0File(file, text) {
+  const ctx = parseRC0(text);
+  ctx._fileName = file.name;
+  ctx.xmlSlot = (parseInt(ctx.mem.getAttribute('id'), 10) || 0) + 1;
+  return ctx;
+}
 
-// Load multiple files (for drag-drop of multiple files at once).
-function loadFiles(files) {
-  const arr = Array.from(files);
-  let overLimitWarning = null;
-  if (arr.length > MEMORY_LIMIT * 2) {
-    overLimitWarning = `That's a lot of files (${arr.length}) — only loading the first ${MEMORY_LIMIT * 2}.`;
+// Load a single file's worth of work: hash check → read → parse → return
+// a parsed-file record, or null if it was a duplicate (already loaded).
+// Throws on parse failure.
+async function loadFileRecord(file) {
+  const hash = await hashFile(file);
+  if (loadedHashes.has(hash)) {
+    batchDuplicates++;
+    return null;
   }
-  batchDroppedCount = 0;
-  for (const f of arr.slice(0, MEMORY_LIMIT * 2)) loadFile(f);
-  // FileReader is async — defer the summary toast slightly so all loads
-  // have settled. Show whichever message applies.
-  setTimeout(() => {
-    if (overLimitWarning) {
-      showToast(overLimitWarning, { duration: 7000 });
-    } else if (batchDroppedCount > 0) {
-      const word = batchDroppedCount === 1 ? 'memory' : 'memories';
-      showToast(
-        `Dropped ${batchDroppedCount} older ${word} to stay under the ${MEMORY_LIMIT}-memory limit.`,
-        { duration: 7000 }
-      );
+  const text = await file.text();
+  const ctx = parseRC0File(file, text);
+  loadedHashes.add(hash);
+  return { ctx, fileName: file.name, hash };
+}
+
+// Group an array of parsed file records into entries. Files sharing xmlSlot
+// within this same group become a single A+B entry; lone files become solo
+// entries.
+function groupIntoEntries(records, dropId) {
+  const bySlot = new Map();
+  for (const r of records) {
+    const slot = r.ctx.xmlSlot;
+    if (!bySlot.has(slot)) bySlot.set(slot, []);
+    bySlot.get(slot).push(r);
+  }
+  const entries = [];
+  for (const [slot, files] of bySlot) {
+    // If 3+ files share a slot within one drop (unusual but possible),
+    // keep all of them in one entry. The pair-banner logic shows the
+    // newest pair; older ones still accessible via the data.
+    entries.push({ dropId, slot, files, isNew: true });
+  }
+  return entries;
+}
+
+// Load multiple files. Filters unsupported files (non-RC0, system files),
+// hashes everything to dedupe across drops, parses what survives, and bundles
+// the results into entries with a fresh dropId so the NEW badge can highlight
+// them in the switcher.
+async function loadFiles(files) {
+  const arr = Array.from(files);
+  // Split into loadable .RC0 files vs skipped (non-RC0, system files).
+  const loadable = [];
+  let skippedSystem = 0;
+  let skippedOther = 0;
+  for (const f of arr) {
+    const base = f.name.split(/[\\/]/).pop().toLowerCase();
+    if (IGNORED_FILENAMES.has(base)) { skippedSystem++; continue; }
+    if (!base.endsWith('.rc0')) { skippedOther++; continue; }
+    loadable.push(f);
+  }
+
+  if (loadable.length === 0) {
+    const msg = (skippedOther > 0 || skippedSystem > 0)
+      ? `No supported .RC0 files in your drop. Try the ROLAND/DATA folder, or individual MEMORY###.RC0 files.`
+      : `No files dropped.`;
+    showToast(msg, { duration: 7000 });
+    return;
+  }
+
+  batchDuplicates = 0;
+  batchParseErrors = 0;
+
+  // Clear "NEW" badges from previous drops — only the most recent drop has
+  // entries highlighted at any one time. This fires BEFORE this drop's
+  // entries are added so we don't blow away their own NEW state.
+  for (const e of loadedEntries) e.isNew = false;
+
+  const dropId = ++currentDropId;
+  const totalForBar = loadable.length;
+  let completed = 0;
+
+  // Loading bar — only appears if the batch is still parsing after 300ms.
+  // Small/fast batches never see it (no flash for a 2-file pair).
+  const dropEl = document.getElementById('drop');
+  const fillEl = document.getElementById('drop-load-fill');
+  const countEl = document.getElementById('drop-load-count');
+  const statusEl = document.getElementById('drop-load-status');
+  let loadingBarShown = false;
+  const updateLoadingBar = () => {
+    if (!loadingBarShown) return;
+    const pct = totalForBar > 0 ? Math.round((completed / totalForBar) * 100) : 0;
+    fillEl.style.width = pct + '%';
+    countEl.textContent = `${completed} / ${totalForBar} files`;
+  };
+  const showLoadingBar = () => {
+    loadingBarShown = true;
+    statusEl.textContent = 'Parsing memories';
+    dropEl.classList.add('loading');
+    updateLoadingBar();
+  };
+  const hideLoadingBar = () => {
+    if (!loadingBarShown) return;
+    loadingBarShown = false;
+    dropEl.classList.remove('loading');
+  };
+  const loadingTimer = setTimeout(showLoadingBar, 300);
+
+  // Parse in chunks so the browser can paint between chunks (DOMParser is
+  // synchronous and CPU-heavy for these XML files; tight sync loops block
+  // paint for seconds on a full-backup drop).
+  const CHUNK = 5;
+  const records = [];
+  for (let i = 0; i < loadable.length; i += CHUNK) {
+    const chunk = loadable.slice(i, i + CHUNK);
+    // Process this chunk's files in parallel within the chunk.
+    const results = await Promise.all(chunk.map(async (f) => {
+      try {
+        const rec = await loadFileRecord(f);
+        return { ok: true, rec };
+      } catch (err) {
+        return { ok: false, err };
+      } finally {
+        completed += 1;
+        updateLoadingBar();
+      }
+    }));
+    for (const r of results) {
+      if (!r.ok) { batchParseErrors++; continue; }
+      if (r.rec === null) continue; // duplicate, already counted
+      records.push(r.rec);
     }
-    batchDroppedCount = 0;
-  }, 250);
+    // Yield to the browser between chunks.
+    if (i + CHUNK < loadable.length) {
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  clearTimeout(loadingTimer);
+  hideLoadingBar();
+
+  // Bundle records into entries (files sharing xmlSlot within this drop
+  // get paired into one A+B entry) and add them to global state.
+  const newEntries = groupIntoEntries(records, dropId);
+  for (const e of newEntries) loadedEntries.push(e);
+
+  // Pick which memory to display: lowest slot among the newly-added entries.
+  // If nothing new was added (e.g. drop was all duplicates), keep the
+  // currently-active ctx — don't surprise the user with a jump.
+  if (newEntries.length > 0) {
+    let lowest = newEntries[0];
+    for (const e of newEntries) if (e.slot < lowest.slot) lowest = e;
+    // Within the entry, show the file with the highest saveCount.
+    const newest = lowest.files.reduce((a, b) =>
+      (a.ctx.saveCount ?? 0) >= (b.ctx.saveCount ?? 0) ? a : b
+    );
+    setActiveCtx(newest.ctx);
+    window.scrollTo({ top: document.getElementById('result').offsetTop - 20, behavior: 'smooth' });
+  }
+
+  // Summary toast — bundle everything into one message.
+  const bits = [];
+  const newCount = newEntries.length;
+  if (newCount > 0) {
+    bits.push(`Loaded ${newCount} memor${newCount === 1 ? 'y' : 'ies'}.`);
+  }
+  if (batchDuplicates > 0) {
+    bits.push(`Skipped ${batchDuplicates} duplicate file${batchDuplicates === 1 ? '' : 's'} (already loaded).`);
+  }
+  if (skippedSystem > 0) {
+    bits.push(`Skipped ${skippedSystem} system file${skippedSystem === 1 ? '' : 's'} (SYSTEM/RHYTHM not yet supported).`);
+  }
+  if (skippedOther > 0) {
+    bits.push(`Skipped ${skippedOther} non-RC0 file${skippedOther === 1 ? '' : 's'}.`);
+  }
+  if (batchParseErrors > 0) {
+    bits.push(`${batchParseErrors} file${batchParseErrors === 1 ? '' : 's'} failed to parse.`);
+  }
+  if (bits.length > 0 && newCount === 0 && batchDuplicates === loadable.length) {
+    // Special case: everything was a dupe. More specific message.
+    showToast(
+      `All ${loadable.length} file${loadable.length === 1 ? '' : 's'} already loaded — nothing new to add.`,
+      { duration: 6000 }
+    );
+  } else if (bits.length > 0) {
+    showToast(bits.join(' '), { duration: 7000 });
+  }
+}
+
+// Recursively walk a DataTransferItem entry tree, collecting all File objects.
+// Used so users can drop folders (e.g. their ROLAND/DATA folder) and not just
+// individual files. Returns a Promise<File[]>.
+function readEntryRecursive(entry) {
+  return new Promise((resolve) => {
+    if (entry.isFile) {
+      entry.file((file) => resolve([file]), () => resolve([]));
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const allEntries = [];
+      // readEntries returns results in batches (typically 100) — must call
+      // repeatedly until it returns an empty list. This is a DataTransfer API
+      // quirk, missing this means you only see the first 100 files of a folder.
+      const readBatch = () => {
+        reader.readEntries((entries) => {
+          if (entries.length === 0) {
+            // Done reading this dir — recurse into all its children
+            Promise.all(allEntries.map(readEntryRecursive)).then((nested) => {
+              resolve(nested.flat());
+            });
+          } else {
+            allEntries.push(...entries);
+            readBatch();
+          }
+        }, () => resolve([]));
+      };
+      readBatch();
+    } else {
+      resolve([]);
+    }
+  });
 }
 
 const drop = document.getElementById('drop');
 const fileInput = document.getElementById('file');
+const folderInput = document.getElementById('file-folder');
 const browseBtn = document.getElementById('browse-btn');
+const browseFolderBtn = document.getElementById('browse-folder-btn');
 
 drop.addEventListener('click', (e) => {
-  if (e.target.tagName === 'BUTTON') return;
+  // Ignore clicks on the buttons (they have their own handlers) and on the
+  // hidden <input type="file"> elements. The latter is important because
+  // calling input.click() inside a button handler dispatches a synthetic
+  // click event from the input itself, which bubbles up here — without this
+  // check the "Browse folder…" button would also open the file picker.
+  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+  // Don't open the picker if a batch is mid-load — the loading bar is showing,
+  // clicking through it would feel weird.
+  if (drop.classList.contains('loading')) return;
   fileInput.click();
 });
 browseBtn.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+browseFolderBtn.addEventListener('click', (e) => { e.stopPropagation(); folderInput.click(); });
 fileInput.addEventListener('change', () => {
   if (fileInput.files.length) loadFiles(fileInput.files);
+  fileInput.value = ''; // allow re-selecting the same file
+});
+folderInput.addEventListener('change', () => {
+  if (folderInput.files.length) loadFiles(folderInput.files);
+  folderInput.value = '';
 });
 drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
 drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
-drop.addEventListener('drop', (e) => {
+drop.addEventListener('drop', async (e) => {
   e.preventDefault();
   drop.classList.remove('dragover');
-  if (e.dataTransfer.files.length) loadFiles(e.dataTransfer.files);
+  // CRITICAL: capture .files BEFORE any await. The DataTransfer object is
+  // invalidated after the event handler relinquishes control (returning a
+  // promise from an async handler counts), so e.dataTransfer.files reads
+  // as empty after our first `await`. Snapshot it eagerly.
+  const fallbackFiles = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : [];
+
+  // Prefer the entry-walking path so folder drops work. webkitGetAsEntry
+  // can also fail silently in some contexts (Brave on file://, some Chrome
+  // file:// edge cases) — in that case we use the captured fallbackFiles.
+  const items = e.dataTransfer.items;
+  let filesToLoad = null;
+  // Track whether the user dropped any folders — if yes and we couldn't walk
+  // them, we surface a specific error pointing at the Browse folder button.
+  let droppedFolderCount = 0;
+  if (items && items.length && typeof items[0].webkitGetAsEntry === 'function') {
+    const entries = [];
+    for (const item of items) {
+      const entry = item.webkitGetAsEntry();
+      if (entry) {
+        entries.push(entry);
+        if (entry.isDirectory) droppedFolderCount++;
+      }
+    }
+    if (entries.length > 0) {
+      const nestedFiles = await Promise.all(entries.map(readEntryRecursive));
+      const allFiles = nestedFiles.flat();
+      if (allFiles.length > 0) filesToLoad = allFiles;
+    }
+  }
+  // Fallback when entry-walk produced nothing (file:// security context,
+  // older browsers, etc). Won't expose folder contents, but plain file drops
+  // and Browse-folder-button still work via the file input APIs.
+  // IMPORTANT: only fall back if the user didn't drop any folders. When they
+  // drop a folder on file://, some browsers put the folder itself into
+  // .files as a pseudo-empty-File entry — feeding that to loadFiles produces
+  // a misleading "no .RC0 files" toast. Better to show the specific folder
+  // error below.
+  if (!filesToLoad && droppedFolderCount === 0 && fallbackFiles.length > 0) {
+    filesToLoad = fallbackFiles;
+  }
+  if (filesToLoad && filesToLoad.length > 0) {
+    loadFiles(filesToLoad);
+  } else if (droppedFolderCount > 0) {
+    // User dropped folder(s) but we couldn't read inside them. Most likely
+    // cause: page is on file:// and the browser blocked the FileSystem entry
+    // API for security. The "Browse folder…" button uses a different API
+    // (file input) that isn't blocked.
+    showToast(
+      'Can\'t read folder contents when the page is opened from a local file. ' +
+      'Use the "Browse folder…" button instead, or host the page on a server.',
+      { duration: 10000 }
+    );
+  }
 });
 
 document.getElementById('led-ready').classList.add('on');
