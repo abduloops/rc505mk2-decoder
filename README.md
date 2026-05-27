@@ -21,25 +21,28 @@ Drag-and-drop viewer for rc-505 mk2 memory files (.RC0). Its basically .xml so i
 
 <img width="1302" height="607" alt="Screenshot 2026-05-27 075317" src="https://github.com/user-attachments/assets/21339820-997f-4d74-85b2-b983c4066ff4" />
 
-*switch thru all ur memories holy*
+*switch thru all ur memories holy* (joshua oshua and robin my favorite😅 w avh and rythmind🌹)
 
 ## Usage 
 
 ## Try here chat w chat😅😅😅: [Super sigma link](https://abduloops.github.io/rc505mk2-decoder/)
 
-You can also just download 'index.html' above or in [releases](../../releases) and run it locally. Doesnt need to install any dependencies or nothing
+You can also just download 'index.html' above or in [releases](../../releases) and run it locally. Doesnt need to install any dependencies or nothing. 
+
+**Note:** Uploading folders won't work unless you run the html on a server (only way I know how is Live Server on VS Code). (If it says something like file:\\... in the URL, then it prolly wont work and you have to upload manually or use site down above)
 
 ## Features
 - Decodes track settings (reverse, 1shot, etc..)
 - See all your IFX, banks and individual effects. Most effects mapped out with proper decoding. AND YOU CAN SWITCH THE FX TOO WHAAAT
 - ALL TFX also shown, including them 4 last ones yessir
 - Very pretty and nice and epic step sequencer graph viewer table thingy (shows values, and notes for osc bot AHHHHHHHHH)
+- Switch thru memories super duper easy like
 - shows other things like assigns and controls (planned feature not actually done yet, some stuff is done for those though)
 
 ## How to use ts
 
 1. Back up any RC-505 mk2 memory to a USB compatible device (compoter👁️👁️) (Menu button x2 -> USB -> Right, then Storage ON).
-2. Find a 'MEMORYXXX.RC0', XXX being 3 digits, from ROLAND -> DATA folder.
+2. Find a 'MEMORY0XX.RC0', XX being 2 digits, from ROLAND -> DATA folder and copy to your computer. Alternatively, you can copy your whole ROLAND folder
 3. Drag and drop into the box
 4. bingo bango bongo
 
@@ -53,7 +56,7 @@ This is still work-in-progress little project. A lot of the values and stuff hav
 
 If you find something wrong, maybe open an issue im no like genius so I might not do anything about it lol or ill just fix it later. ionknow how ts work ngl.
 
-Also, i dont plan on making an editor because thats dangerous. you could brick ur loop prolly so dont try plz (i aint responsible if you do, this doesnt let you edit).
+Also, i dont plan on making an editor because thats dangerous. you could brick ur loop prolly so dont try plz (i aint responsible if you do; this doesnt let you edit anyways).
 
 ## Heads up seven up
 
@@ -69,9 +72,8 @@ Also blah blah blah i aint responsible for stuff that happen with ur loop gang. 
 * I havent tested on mobile (idk why u would upload ur backup to phone but u do u gang it might be hard to do stuff though)
 
 ## Future Plans
-* ~~ts lowk some yap but basically imma try getting a save like comparing thing on here. also with some testing i found out sometimes when you save a change it saves to MemoryXXXB instead of A idk why or how ts works but thats my reasoning for that.~~ done ts kinda basically a bit
-* also maybe plan on getting SYSTEM1.RC0 and SYSTEM2.RC0 to work in this site cuz right now its only memory files so yuh.
-* other future plans are like try finding more bugs ~~(i think some fx display incorrectly)~~ (fx bug should be gone now nyeheheh)
+* maybe plan on getting SYSTEM1.RC0 and SYSTEM2.RC0 to work in this site cuz right now its only memory files so yuh.
+* maybe very strong maybe with WAV player or something
   
 ## Credits
 
